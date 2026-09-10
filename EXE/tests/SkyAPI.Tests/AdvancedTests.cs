@@ -42,6 +42,32 @@ internal static class AdvancedTests {
             "contratacao previa: 15 restauracoes, saldo 2, autoriza somente 13");
         check(restorePlan.Summary.Contains("necessárias 15") && restorePlan.Summary.Contains("disponíveis 2"),
             "contratacao previa: resumo mostra necessidade e saldo antes de enviar");
+
+        // 1.1.12: antes, uma conta que a API nao reconhece como excluida lancava e derrubava a
+        // conferencia inteira — o relatorio saia com uma linha so, sem dizer nada das demais.
+        var ausente="teste9@empresa.com.br";
+        var parcialService=new AdvancedService((method,path,fields)=>Task.FromResult(
+            path.StartsWith("client?")?Reply(new[]{new{clientId=10,name="Cliente"}}):
+            path=="client/10/product"?Reply(new[]{new{productId=44,name="SkyMail 5GB"}}):
+            path=="mailbox/deleted/"+Uri.EscapeDataString(ausente)?new ApiReply(404,false,default,false,"nao encontrada"):
+            path.StartsWith("mailbox/deleted/")?Reply(new{clientId=10,accounttype="SkyMail 5GB"}):
+            Reply(new{amount=2,count=0,items=Array.Empty<object>()})));
+        var parcial=await parcialService.RestorationPurchases(restoreAccounts);
+        check(parcial.Summary.Contains("necessárias 14"),"1.1.12: conta nao reconhecida sai da conta de licencas");
+        check(parcial.Summary.Contains(ausente) && parcial.Summary.Contains("não reconhece"),
+            "1.1.12: conferencia avisa quais contas a API nao reconhece como excluidas");
+        check(!parcial.PurchaseAccounts.Contains(ausente),"1.1.12: conta nao reconhecida nao entra na contratacao");
+
+        // Falha de conexao ou permissao continua interrompendo: nenhuma outra resposta seria confiavel.
+        var negadoService=new AdvancedService((method,path,fields)=>Task.FromResult(
+            path.StartsWith("client?")?Reply(new[]{new{clientId=10,name="Cliente"}}):
+            path=="client/10/product"?Reply(new[]{new{productId=44,name="SkyMail 5GB"}}):
+            path.StartsWith("mailbox/deleted/")?new ApiReply(403,false,default,false,"sem permissao",true):
+            Reply(new{amount=2,count=0,items=Array.Empty<object>()})));
+        bool interrompeu=false;
+        try {await negadoService.RestorationPurchases(restoreAccounts);}
+        catch(ApiFailure){interrompeu=true;}
+        check(interrompeu,"1.1.12: 403 na conferencia de restauracao continua interrompendo o lote");
         int writes=0,purchases=0;var updated=new HashSet<string>();
         var purchaseService=new AdvancedService((method,path,fields)=>{
             var account=Uri.UnescapeDataString(path.Substring("mailbox/".Length));

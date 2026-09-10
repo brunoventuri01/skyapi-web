@@ -39,15 +39,21 @@ public sealed class AdvancedService {
         var catalog=await ClientProducts();
         var batches=new Dictionary<(string Client,string Product),List<string>>();
         var productOf=new Dictionary<(string Client,string Product),MailProduct?>();
+        // Contas que a API nao lista como excluidas: ficam de fora da conta de licencas,
+        // aparecem na conferencia e seguem no lote para ter cada uma o seu resultado.
+        var unrecognized=new List<string>();
         foreach(var account in accounts) {
             var reply=await send("GET","mailbox/deleted/"+E(account),null);
-            // Uma unica conta recusada interrompe a conferencia inteira. Sem dizer qual e por que,
-            // sobra descobrir no olho qual das dezenas do lote travou.
-            if(!reply.Success)throw new ApiFailure(reply with {Message=account+": "+(reply.Code==404
-                ?"a API não encontrou esta conta entre as caixas excluídas. Confira se ela foi mesmo excluída, se já não foi restaurada e se a exclusão terminou de processar."
-                :reply.Message)});
+            // 404 e resposta sobre esta conta, nao sobre a conexao: registra e segue, senao uma unica
+            // conta derruba a conferencia de todo o lote e o relatorio sai com uma linha so.
+            // Erro de conexao ou permissao (401, 403, 5xx) continua interrompendo: ai nenhuma
+            // das outras respostas seria confiavel.
+            if(!reply.Success) {
+                if(reply.Code==404){unrecognized.Add(account);continue;}
+                throw new ApiFailure(reply with {Message=account+": "+reply.Message});
+            }
             var client=JsonValue.Text(reply.Data,"clientId");
-            if(!long.TryParse(client,out _))throw new InvalidOperationException("A API não identificou o cliente da caixa excluída "+account+".");
+            if(!long.TryParse(client,out _)){unrecognized.Add(account);continue;}
             var name=JsonValue.Text(reply.Data,"productname");
             if(name.Length==0)name=JsonValue.Text(reply.Data,"accounttype");
             var matches=catalog.Where(p=>p.ClientId==client && (p.Product.Name==name ||
@@ -67,6 +73,8 @@ public sealed class AdvancedService {
                 ": necessárias "+batch.Value.Count+"; disponíveis "+(stock?.Available?.ToString()??"não informadas")+
                 "; contratação de até "+Math.Max(0,batch.Value.Count-free)+".");
         }
+        if(unrecognized.Count>0)lines.Insert(0,"A API não reconhece "+unrecognized.Count+" conta(s) como excluída(s): "+
+            string.Join(", ",unrecognized)+". Elas não consomem licença; cada uma terá o seu próprio resultado no relatório.");
         return(purchase,string.Join("\n",lines));
     }
     public async Task<string> ClientForDomain(string domain) {
