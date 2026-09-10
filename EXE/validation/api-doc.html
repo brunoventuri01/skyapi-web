@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Skynova Admin API — Documentação</title>
+    <meta name="description" content="Documentação oficial da API REST de administração da Skynova (OpenAPI 3)."/>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%233b82f6'/><text x='16' y='22' text-anchor='middle' font-size='18' font-weight='bold' fill='white'>S</text></svg>"/>
+    <link rel="stylesheet" href="./assets/tailwind.min.css"/>
+    <style>
+        :root {
+            --md-heading: #111827;
+            --md-heading-sub: #1f2937;
+            --md-heading-sub2: #374151;
+            --md-link: #2563eb;
+            --md-code-bg: #f3f4f6;
+            --md-code-color: #b91c1c;
+            --md-border: #e5e7eb;
+            --md-th-bg: #f9fafb;
+            --md-bq-border: #93c5fd;
+            --md-bq-bg: #eff6ff;
+            --md-bq-color: #1e3a8a;
+            --scrollbar-thumb: #d1d5db;
+        }
+        html { scroll-behavior: smooth; }
+        [id] { scroll-margin-top: 4.5rem; }
+        .md { line-height: 1.65; }
+        .md h1 { font-size: 1.9rem; font-weight: 700; margin: .2rem 0 1rem; color: var(--md-heading); }
+        .md h2 { font-size: 1.35rem; font-weight: 700; margin: 2rem 0 .8rem; color: var(--md-heading); border-bottom: 1px solid var(--md-border); padding-bottom: .3rem; }
+        .md h3 { font-size: 1.1rem; font-weight: 600; margin: 1.4rem 0 .5rem; color: var(--md-heading-sub); }
+        .md h4 { font-size: 1rem; font-weight: 600; margin: 1rem 0 .4rem; color: var(--md-heading-sub2); }
+        .md p { margin: .6rem 0; }
+        .md ul { list-style: disc; padding-left: 1.4rem; margin: .6rem 0; }
+        .md ol { list-style: decimal; padding-left: 1.4rem; margin: .6rem 0; }
+        .md li { margin: .25rem 0; }
+        .md a { color: var(--md-link); text-decoration: underline; }
+        .md code { background: var(--md-code-bg); color: var(--md-code-color); padding: .1rem .35rem; border-radius: .25rem; font-size: .85em; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+        .md pre { background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: .5rem; overflow-x: auto; margin: .8rem 0; }
+        .md pre code { background: transparent; color: inherit; padding: 0; }
+        .md table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: .9rem; display: block; overflow-x: auto; }
+        .md th, .md td { border: 1px solid var(--md-border); padding: .5rem .7rem; text-align: left; vertical-align: top; }
+        .md th { background: var(--md-th-bg); font-weight: 600; color: var(--md-heading-sub); }
+        .md blockquote { border-left: 4px solid var(--md-bq-border); background: var(--md-bq-bg); padding: .6rem 1rem; margin: 1rem 0; color: var(--md-bq-color); border-radius: 0 .375rem .375rem 0; }
+        pre.code { background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: .5rem; overflow-x: auto; font-size: .82rem; line-height: 1.55; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+        .tok-key { color: #7dd3fc; }
+        .tok-str { color: #86efac; }
+        .tok-num { color: #fdba74; }
+        .tok-bool { color: #c4b5fd; }
+        .tok-null { color: #9ca3af; }
+        .import-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+        @media (min-width: 640px) { .import-grid { grid-template-columns: 1fr 1fr; } }
+        .code-wrap { position: relative; }
+        .code-copy { position: absolute; top: 6px; right: 6px; font-size: 11px; line-height: 1;
+            padding: 4px 8px; border-radius: 4px; cursor: pointer; color: #e2e8f0;
+            background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25);
+            opacity: .65; transition: opacity .12s, background .12s; z-index: 2; }
+        .code-wrap:hover .code-copy { opacity: 1; }
+        .code-copy:hover { background: rgba(255,255,255,.25); }
+        @media (max-width: 1023px) {
+            #sidebar.sidebar-open {
+                display: block; position: fixed; top: 3.5rem; left: 0; bottom: 0;
+                width: 18rem; z-index: 45; box-shadow: 0 10px 30px rgba(0,0,0,.25);
+            }
+        }
+        #sidebar::-webkit-scrollbar { width: 8px; }
+        #sidebar::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
+
+        /* ====== Dark Mode — applied via .dark-mode class on <html> ====== */
+        html.dark-mode {
+            --md-heading: #f1f5f9;
+            --md-heading-sub: #e2e8f0;
+            --md-heading-sub2: #cbd5e1;
+            --md-link: #60a5fa;
+            --md-code-bg: #334155;
+            --md-code-color: #fca5a5;
+            --md-border: #334155;
+            --md-th-bg: #334155;
+            --md-bq-border: #3b82f6;
+            --md-bq-bg: #172554;
+            --md-bq-color: #93c5fd;
+            --scrollbar-thumb: #475569;
+        }
+        html.dark-mode body.bg-gray-50 { background-color: #0f172a; color: #e2e8f0; }
+        html.dark-mode .bg-white { background-color: #1e293b; }
+        html.dark-mode header .bg-white { background-color: #fff; }
+        html.dark-mode .bg-gray-50 { background-color: #0f172a; }
+        html.dark-mode .bg-gray-100 { background-color: #334155; }
+        html.dark-mode .bg-gray-800 { background-color: #475569; }
+        html.dark-mode .text-gray-900 { color: #f1f5f9; }
+        html.dark-mode header .text-gray-900 { color: #111827; }
+        html.dark-mode .text-gray-800 { color: #e2e8f0; }
+        html.dark-mode .text-gray-700 { color: #cbd5e1; }
+        html.dark-mode .text-gray-600 { color: #94a3b8; }
+        html.dark-mode .text-gray-500 { color: #94a3b8; }
+        html.dark-mode .text-gray-400 { color: #64748b; }
+        html.dark-mode .border-gray-200 { border-color: #334155; }
+        html.dark-mode .border-gray-100 { border-color: #1e293b; }
+        html.dark-mode .border-gray-300 { border-color: #475569; }
+        html.dark-mode .hover\:bg-gray-50:hover { background-color: #334155; }
+        html.dark-mode .hover\:bg-gray-100:hover { background-color: #334155; }
+        html.dark-mode .hover\:bg-gray-200:hover { background-color: #475569; }
+        html.dark-mode header .hover\:bg-gray-200:hover { background-color: #e5e7eb; }
+        html.dark-mode .bg-red-50 { background-color: #450a0a; }
+        html.dark-mode .text-red-700 { color: #fca5a5; }
+        html.dark-mode .text-red-600 { color: #f87171; }
+        html.dark-mode .border-red-300 { border-color: #991b1b; }
+        html.dark-mode .border-red-200 { border-color: #7f1d1d; }
+        html.dark-mode .text-green-700 { color: #86efac; }
+        html.dark-mode .text-blue-600 { color: #60a5fa; }
+        html.dark-mode input[type="text"], html.dark-mode input[type="password"],
+        html.dark-mode input[type="search"], html.dark-mode textarea {
+            background-color: #0f172a; color: #e2e8f0; border-color: #475569;
+        }
+        html.dark-mode input::placeholder, html.dark-mode textarea::placeholder { color: #64748b; }
+        html.dark-mode #sidebar { background-color: #1e293b; border-right-color: #334155; }
+        html.dark-mode #sidebar > .sticky { background-color: #1e293b; border-bottom-color: #334155; }
+        html.dark-mode details.op { background-color: #1e293b; border-color: #334155; }
+        html.dark-mode details.op > summary:hover { background-color: #334155; }
+        html.dark-mode details.op .op-body { border-top-color: #334155; }
+        html.dark-mode #keyModal > div:last-child,
+        html.dark-mode #authModal > div:last-child,
+        html.dark-mode #importModal > div:last-child { background-color: #1e293b; }
+        html.dark-mode .import-grid > div { background-color: #1e293b; border-color: #334155; }
+        html.dark-mode #loader { background-color: #0f172a; }
+        html.dark-mode #loader .animate-spin { border-color: #334155 !important; border-top-color: #3b82f6 !important; }
+        html.dark-mode .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0,0,0,.5), 0 4px 6px -4px rgba(0,0,0,.5); }
+        /* Theme toggle */
+        #themeMenu { background: #1f2937; color: #e2e8f0; box-shadow: 0 8px 24px rgba(0,0,0,.35); border: 1px solid #374151; }
+        #themeMenu .theme-opt { display: flex; align-items: center; gap: .5rem; width: 100%; padding: .5rem .75rem;
+            font-size: .85rem; text-align: left; cursor: pointer; border: none; background: none; color: inherit;
+            transition: background .1s; }
+        #themeMenu .theme-opt:hover { background: #374151; }
+        #themeMenu .theme-icon { width: 1.2em; text-align: center; }
+    </style>
+    <script>
+        (function(){
+            var pref = localStorage.getItem('doc-theme-preference') || 'system';
+            function apply(p) {
+                var dark = p === 'dark' || (p === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                document.documentElement.classList.toggle('dark-mode', dark);
+            }
+            apply(pref);
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
+                apply(localStorage.getItem('doc-theme-preference') || 'system');
+            });
+            window.__setTheme = function(v) { localStorage.setItem('doc-theme-preference', v); apply(v); };
+        })();
+    </script>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased">
+
+    <!-- Barra superior -->
+    <header class="sticky top-0 z-40 bg-gray-900 text-white shadow">
+        <div class="flex items-center gap-3 h-14 px-4">
+            <button id="sidebarToggle" type="button" aria-label="Abrir menu lateral"
+                    class="lg:hidden inline-flex items-center justify-center w-9 h-9 rounded hover:bg-gray-700 text-xl leading-none">☰</button>
+            <a id="brand" href="#presentation" class="flex items-center gap-2 font-semibold whitespace-nowrap">
+                <span id="brandLogo" class="inline-block w-2 h-2 rounded-full bg-blue-400"></span>
+                <span id="brandName">Skynova Admin API</span>
+                <span class="hidden sm:inline text-xs font-normal opacity-50">v1 · OpenAPI 3</span>
+            </a>
+            <div class="ml-auto flex items-center gap-2 text-sm">
+                <button id="keyBtn" type="button"
+                   class="px-3 py-1 rounded bg-white text-gray-900 hover:bg-gray-200 font-semibold transition">🔑 Obter chave</button>
+                <button id="authBtn" type="button"
+                   class="inline-flex items-center gap-2 px-3 py-1 rounded border border-gray-600 hover:bg-gray-700 transition">▶ Testar API <span id="authStatus" class="text-xs font-semibold text-gray-400">○ Não iniciado</span></button>
+                <button id="importBtn" type="button"
+                   class="inline-flex items-center gap-1 px-3 py-1 rounded border border-gray-600 hover:bg-gray-700 transition">⬇ Importar documentação</button>
+                <div style="position:relative">
+                    <button id="themeToggle" type="button"
+                       class="inline-flex items-center gap-1 px-3 py-1 rounded transition text-sm" style="border:1px solid rgba(255,255,255,.35)" title="Tema">
+                        <span id="themeIcon">◑</span> Tema</button>
+                    <div id="themeMenu" class="hidden" style="position:absolute;right:0;top:calc(100% + 6px);min-width:150px;border-radius:8px;overflow:hidden;z-index:60;">
+                        <button data-theme="light" class="theme-opt" type="button"><span class="theme-icon">○</span> Claro</button>
+                        <button data-theme="dark" class="theme-opt" type="button"><span class="theme-icon">●</span> Escuro</button>
+                        <button data-theme="system" class="theme-opt" type="button"><span class="theme-icon">◑</span> Auto</button>
+                    </div>
+                </div>
+                <script>(function(){
+                    var icons={system:'◑',light:'○',dark:'●'},
+                        ic=document.getElementById('themeIcon'),
+                        menu=document.getElementById('themeMenu'),
+                        pref=localStorage.getItem('doc-theme-preference')||'system';
+                    ic.textContent=icons[pref];
+                    document.getElementById('themeToggle').addEventListener('click',function(e){e.stopPropagation();menu.classList.toggle('hidden');});
+                    document.addEventListener('click',function(){menu.classList.add('hidden');});
+                    menu.addEventListener('click',function(e){e.stopPropagation();});
+                    document.querySelectorAll('.theme-opt').forEach(function(o){
+                        o.addEventListener('click',function(){
+                            var v=o.getAttribute('data-theme');
+                            ic.textContent=icons[v];
+                            menu.classList.add('hidden');
+                            window.__setTheme(v);
+                        });
+                    });
+                })();</script>
+            </div>
+        </div>
+    </header>
+
+    <div id="authBanner" class="hidden sticky top-14 z-30 bg-red-600 text-white">
+        <div class="px-4 py-2 flex items-center gap-3 text-sm">
+            <span>⚠️ <strong>Modo de testes ativo</strong> — os botões “Testar” executam chamadas <strong>REAIS em PRODUÇÃO</strong> (<span id="authBannerBase" class="font-mono"></span>).</span>
+            <button id="authBannerClear" type="button" class="ml-auto underline whitespace-nowrap">Limpar credenciais</button>
+        </div>
+    </div>
+
+    <div class="flex">
+        <!-- Sidebar -->
+        <aside id="sidebar"
+               class="w-72 flex-shrink-0 hidden lg:block sticky top-14 overflow-y-auto bg-white border-r border-gray-200"
+               style="height: calc(100vh - 3.5rem);">
+            <div class="p-3 sticky top-0 bg-white border-b border-gray-100">
+                <input id="search" type="search" placeholder="Buscar endpoint…"
+                       class="w-full px-3 py-2 text-sm rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"/>
+                <div class="mt-2 flex gap-2 text-xs">
+                    <button id="expandAll" class="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200">Expandir tudo</button>
+                    <button id="collapseAll" class="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200">Recolher tudo</button>
+                </div>
+            </div>
+            <nav id="nav" class="px-2 py-3 text-sm"></nav>
+        </aside>
+        <div id="sidebarBackdrop" class="hidden lg:hidden fixed inset-0 z-40" style="background: rgba(0,0,0,.4); top: 3.5rem;"></div>
+        <main class="flex-1 min-w-0 px-4 sm:px-8 py-8">
+            <div class="max-w-4xl mx-auto">
+                <section id="presentation" class="md"></section>
+                <div id="jwt-section" class="mt-10" style="display: none"></div>
+                <div id="import-section" class="mt-10" style="display: none"></div>
+                <div id="content" class="mt-10"></div>
+                <footer class="mt-16 pt-6 border-t border-gray-200 text-sm text-gray-500">
+                    Documentação no padrão OpenAPI 3 ·
+                    <button id="importFooter" type="button" class="text-blue-600 underline">importar em Postman, Insomnia, Swagger, Apidog…</button>
+                </footer>
+            </div>
+        </main>
+    </div>
+
+    <div id="keyModal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4"
+         style="background: rgba(15,23,42,.55);">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl"
+             style="max-height: 90vh; display:flex; flex-direction:column;">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">Obter chave da API</h3>
+                <button id="keyClose" type="button"
+                        class="text-gray-400 hover:text-gray-700 text-2xl leading-none" aria-label="Fechar">&times;</button>
+            </div>
+            <div class="px-6 py-5 md" style="overflow-y:auto;">
+                <h4>Requisitos para utilização</h4>
+                <p>Para consumir a API você precisa de duas informações:</p>
+                <ol>
+                    <li><strong>Chave privada do ambiente</strong> — obtida no Painel de Controle. Vem codificada em
+                        <strong>base64</strong> e precisa ser decodificada antes de assinar o JWT.</li>
+                    <li><strong>Token público do usuário (<code>jti</code>)</strong> — retornado por
+                        <code>POST /auth/login</code> com o usuário e a senha do Painel de Controle.</li>
+                </ol>
+
+                <h4>Onde obter a chave privada</h4>
+                <p>No Painel de Controle, siga o caminho:</p>
+                <p><strong>Menu Superior Direito → Configurações da Conta → Interface API → Chave Privada</strong></p>
+                <p>
+                    <a id="keyPanelLink" href="https://painel.skymail.com.br/settings#tb_api" target="_blank" rel="noopener"
+                       class="inline-block px-3 py-2 rounded bg-blue-600 hover:bg-blue-500 text-sm font-semibold"
+                       style="color:#fff; text-decoration:none;">Abrir o Painel de Controle</a>
+                </p>
+
+                <h4>Autenticação (JWT)</h4>
+                <p>A API usa <strong>JWT</strong> (assinatura <strong>HS256</strong>). Com a chave privada e o
+                    <code>jti</code> em mãos, monte o token assim:</p>
+                <ol>
+                    <li>Faça <code>POST /auth/login</code> e guarde o <code>jti</code>.</li>
+                    <li>Decodifique de <strong>base64</strong> a chave privada do ambiente.</li>
+                    <li>Assine, com essa chave, o header <code>{ "typ": "JWT", "alg": "HS256" }</code> e o payload
+                        <code>{ "jti": "…" }</code>.</li>
+                    <li>Envie o token em todas as chamadas no header <code>Authorization: bearer &lt;jwt&gt;</code>.</li>
+                </ol>
+
+                <h4>Gerando o token JWT no seu código</h4>
+                <p>Exemplos prontos para montar a string JWT na sua aplicação:</p>
+                <div id="keyJwtSection"></div>
+            </div>
+        </div>
+    </div>
+    <div id="authModal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4"
+         style="background: rgba(15,23,42,.55);">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl"
+             style="max-height: 90vh; display:flex; flex-direction:column;">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">Testar a API pela documentação</h3>
+                <button id="authClose" type="button"
+                        class="text-gray-400 hover:text-gray-700 text-2xl leading-none" aria-label="Fechar">&times;</button>
+            </div>
+            <div class="px-6 py-5" style="overflow-y:auto;">
+                <div class="rounded-md border border-red-300 bg-red-50 text-red-700 text-sm p-3 mb-4">
+                    <strong>Atenção — ambiente de PRODUÇÃO.</strong> As chamadas de teste são executadas de verdade contra
+                    <code id="authBaseLabel" class="font-mono"></code> e têm <strong>efeito real</strong>
+                    (podem criar, alterar e excluir dados). Use com cuidado.
+                </div>
+
+                <p class="text-sm text-gray-600 mb-2">Informe o <code>jti</code> e a chave privada do ambiente para gerar
+                    a string <strong>JWT</strong> (HS256) e habilitar o botão “Testar” em cada endpoint. A documentação
+                    monta o JWT no seu navegador e o envia em <code>Authorization: bearer …</code> nas chamadas.</p>
+                <p class="text-sm text-gray-600 mb-4">Ainda não tem a chave privada ou quer entender como gerar o JWT no
+                    seu próprio código? Veja
+                    <button id="openKeyFromAuth" type="button" class="text-blue-600 underline">Obter chave</button>.</p>
+
+                <div class="rounded-md border border-gray-200 p-3 mb-3">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Obter jti via login (<code>POST /auth/login</code> — chamada em produção)</div>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <form name="auth-api">
+                            <input id="authLoginUser" type="text" placeholder="usuário (ex.: nome@dominio.com.br)"
+                                   class="flex-1 px-3 py-2 text-sm rounded border border-gray-300" autocomplete="off" />
+                            <input id="authLoginPass" type="password" placeholder="senha" autocomplete="off"
+                                   class="flex-1 px-3 py-2 text-sm rounded border border-gray-300"/>
+                        </form>
+                    </div>
+                    <div id="captchaContainer" class="hidden mt-2">
+                        <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Validação de Segurança</label>
+                        <div class="flex items-center gap-2">
+                            <img id="captchaImg" src="" alt="Captcha" class="h-10 rounded border border-gray-300 cursor-pointer" title="Clique para atualizar">
+                            <input id="captchaInput" type="text" placeholder="Digite os números"
+                                   class="w-32 px-3 py-2 text-sm rounded border border-gray-300"/>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <button id="authLogin" type="button"
+                                class="px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold whitespace-nowrap">Obter jti</button>
+                    </div>
+                    <div id="authLoginMsg" class="text-xs mt-2"></div>
+                </div>
+
+                <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">jti (preenchido após o login ou cole um jti existente)</label>
+                <input id="authJti" type="text" placeholder="será preenchido após o login"
+                       class="w-full px-3 py-2 text-sm rounded border border-gray-300 mb-3 font-mono"/>
+
+                <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Chave privada do ambiente (base64) — Painel &rarr; Configurações &rarr; API</label>
+                <textarea id="authKey" rows="3" placeholder="cole aqui a chave privada em base64"
+                          class="w-full px-3 py-2 text-sm rounded border border-gray-300 font-mono"></textarea>
+
+                <div class="flex flex-wrap gap-2 mt-3">
+                    <button id="authGenerate" type="button"
+                            class="px-3 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold">Gerar JWT e ativar</button>
+                    <button id="authClear" type="button"
+                            class="px-3 py-2 rounded border border-gray-300 hover:bg-gray-100 text-gray-700 text-sm font-semibold">Limpar credenciais</button>
+                </div>
+
+                <div id="authError" class="hidden text-red-600 text-sm mt-2"></div>
+
+                <div id="authResult" class="hidden mt-4">
+                    <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">JWT gerado (enviado como <code>Authorization: bearer …</code>)</label>
+                    <textarea id="authJwt" readonly rows="3"
+                              class="w-full px-3 py-2 text-xs rounded border border-gray-300 bg-gray-50 font-mono"></textarea>
+                    <div class="flex items-center gap-2 mt-2">
+                        <button id="authCopy" type="button" class="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm">Copiar</button>
+                        <span class="text-xs text-green-700">✔ Ativo — os endpoints agora têm o botão “Testar”.</span>
+                    </div>
+                </div>
+
+                <p class="text-xs text-gray-500 mt-4">O JWT é gerado no seu navegador (HS256, Web Crypto) e fica apenas
+                    nesta aba (<code>sessionStorage</code>). A chave privada <strong>não</strong> é armazenada nem enviada
+                    a nenhum servidor. Use “Limpar credenciais” para encerrar.</p>
+            </div>
+        </div>
+    </div>
+    <div id="importModal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4"
+         style="background: rgba(15,23,42,.55);">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl"
+             style="max-height: 88vh; display:flex; flex-direction:column;">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">Importar documentação</h3>
+                <button id="importClose" type="button"
+                        class="text-gray-400 hover:text-gray-700 text-2xl leading-none" aria-label="Fechar">&times;</button>
+            </div>
+            <div id="importBody" class="px-6 py-5" style="overflow-y:auto;"></div>
+            <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-wrap gap-2 justify-end">
+                <a href="./v1/doc/openapi.yaml" download
+                   class="px-3 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold">⬇ Baixar OpenAPI 3 (YAML)</a>
+                <a href="./v1/doc/openapi.json" download
+                   class="px-3 py-2 rounded border border-gray-300 hover:bg-gray-100 text-gray-700 text-sm font-semibold">⬇ Baixar OpenAPI 3 (JSON)</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="loader" class="fixed inset-0 flex items-center justify-center bg-gray-50 z-50">
+        <div class="text-center">
+            <div class="mx-auto rounded-full animate-spin" style="width:2.25rem;height:2.25rem;border:4px solid #e5e7eb;border-top-color:#3b82f6;"></div>
+            <p class="mt-3 text-gray-500 text-sm">Carregando documentação…</p>
+        </div>
+    </div>
+
+    <script src="./assets/marked.min.js" defer></script>
+    <script src="./assets/docs.js" defer></script>
+</body>
+</html>

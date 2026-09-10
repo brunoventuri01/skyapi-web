@@ -1,0 +1,30 @@
+@inject WebSession Session
+<section class="panel results" aria-label="Resultados">
+    <div class="section-heading"><h2>Resultados</h2><span>@Job.Rows.Count registros · @Job.Messages.Count mensagens</span></div>
+    @if(Job.Kind=="upgrade") {<p>Selecione contas com o mesmo produto sugerido para preparar a alteração de licenças.</p>}
+    <div class="table-scroll"><table>
+        <thead><tr>@if(Job.Kind=="upgrade"){<th>Selecionar</th>}<th>Conta / busca</th><th>Resultado</th>@if(Job.Kind=="upgrade"){<th>Quota</th><th>Uso</th><th>Produto atual</th><th>Produto sugerido</th>}<th>Detalhes</th></tr></thead>
+        <tbody>@foreach(var row in Job.Rows.Skip(page*100).Take(100)) {
+            <tr>@if(Job.Kind=="upgrade"){<td><input type="checkbox" aria-label="Selecionar @row.Account" checked="@selected.Contains(row.Account)" disabled="@(row.Suggested.Length==0)" @onchange="()=>Toggle(row.Account)" /></td>}
+                <td class="account">@row.Account</td><td><span class="badge @(row.Result is "Sucesso" or "Simulado"?"ok":"muted")">@row.Result</span></td>
+                @if(Job.Kind=="upgrade"){<td>@row.Quota</td><td>@row.Usage</td><td>@row.Product</td><td>@row.Suggested</td>}
+                <td class="details">@row.Details</td></tr>
+        }</tbody>
+    </table></div>
+    @if(Job.Rows.Count>100){<div class="actions"><button disabled="@(page==0)" @onclick="()=>page--">Anterior</button><span>Página @(page+1) / @((Job.Rows.Count+99)/100)</span><button disabled="@((page+1)*100>=Job.Rows.Count)" @onclick="()=>page++">Próxima</button></div>}
+    <div class="actions"><button @onclick='()=>Session.Download(Job,"results")'>Exportar resultados CSV</button><button @onclick='()=>Session.Download(Job,"log")'>Baixar log da operação</button>
+    @if(Job.Kind=="upgrade"){<button class="primary" disabled="@(selected.Count==0||Job.Running)" @onclick="SendUpgrade">Enviar para Alteração de Licenças</button>}</div>
+    @if(Job.Messages.Count>0){
+        <h2>Mensagens</h2><div class="table-scroll"><table><thead><tr><th>Data</th><th>Remetente</th><th>Destinatário</th><th>Assunto</th><th>Tamanho</th><th>Status</th></tr></thead><tbody>
+        @foreach(var row in Job.Messages.Skip(messagePage*100).Take(100)){<tr><td>@row.Date</td><td>@row.Sender</td><td>@row.Recipient</td><td class="details">@row.Subject</td><td>@row.Size</td><td>@row.Status</td></tr>}
+        </tbody></table></div>
+        <div class="actions"><button disabled="@(messagePage==0)" @onclick="()=>messagePage--">Anterior</button><span>Página @(messagePage+1) / @((Job.Messages.Count+99)/100)</span><button disabled="@((messagePage+1)*100>=Job.Messages.Count)" @onclick="()=>messagePage++">Próxima</button><button @onclick='()=>Session.Download(Job,"messages")'>Exportar mensagens CSV</button></div>
+    }
+</section>
+@code {
+    [Parameter,EditorRequired]public WebJob Job {get;set;}=null!;
+    [Parameter]public EventCallback<OperationRow[]> Upgrade {get;set;}
+    private HashSet<string> selected=new();private int page,messagePage;
+    private void Toggle(string account){if(!selected.Add(account))selected.Remove(account);}
+    private Task SendUpgrade()=>Upgrade.InvokeAsync(Job.Rows.Where(r=>selected.Contains(r.Account)).ToArray());
+}

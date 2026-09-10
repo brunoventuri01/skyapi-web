@@ -1,0 +1,141 @@
+@implements IDisposable
+@inject WebSession Session
+@inject IJSRuntime JS
+<PageTitle>SkyAPI — Assistente de operações</PageTitle>
+<div class="app @(dark?"dark":"light")" style="--scale:@(scale.ToString(CultureInfo.InvariantCulture))">
+    <aside class="sidebar">
+        <img class="logo" src="@(dark?"skynova-escuro.svg":"skynova-claro.svg")" alt="Skynova — Soluções em nuvem" />
+        <div class="brand">SkyAPI<small>ASSISTENTE DE OPERAÇÕES</small></div>
+        <nav aria-label="Menu principal">
+        @foreach(var item in menus){<button class="nav @(NavKey==item.Key?"active":"")" @onclick="()=>Navigate(item.Key)"><span aria-hidden="true">@item.Icon</span>@item.Label@if(item.Key=="processes"&&Session.Running){<b>@Session.Jobs.Count(j=>j.Running)</b>}</button>}
+        </nav>
+        <div class="sidebar-bottom">
+            <small>TAMANHO DO TEXTO</small><div class="scale-controls"><button aria-label="Diminuir texto" @onclick="()=>ChangeScale(-.1)">−</button><span>@((int)Math.Round(scale*100))%</span><button aria-label="Aumentar texto" @onclick="()=>ChangeScale(.1)">+</button></div>
+            <button class="theme" @onclick="ToggleTheme">@(dark?"☼ Modo claro":"☾ Modo escuro")</button>
+            <div class="connection-card @ConnectionTone"><strong>● @ConnectionHeading</strong><small>@ConnectionNote</small></div>
+            <small>SkyAPI 1.1.11 · Web</small>
+        </div>
+    </aside>
+    <main>
+        <header><div><h1>@Title</h1><p>@Subtitle</p></div><div class="actions"><span class="badge @ConnectionTone">● @ConnectionHeading</span><button class="primary" disabled="@Session.Running" @onclick="GoToConnection">@(Session.Api.HasToken?"Gerenciar conexão":Session.Demo?"Sair da demonstração":"Conectar à API")</button></div></header>
+        @if(Session.Error.Length>0){<div class="notice danger" role="alert">@Session.Error<button class="dismiss" aria-label="Fechar mensagem" @onclick='()=>Session.Error=""'>×</button></div>}
+        @if(Session.RateMessage.Length>0){<div class="notice warning" role="status">@Session.RateMessage</div>}
+        @if(ActiveJob is {} current){
+            <section class="notice @(current.Running?"info":current.Attention?"warning":"ok")" aria-live="polite">
+                <strong>@current.Status</strong>
+                @if(current.Running){<progress max="@Math.Max(1,current.Total)" value="@current.Progress"></progress><button disabled="@current.Stop" @onclick="()=>{current.Stop=true;Session.Notify();}">@(current.Stop?"Parando após a chamada atual…":"Parar após a chamada atual")</button>}
+            </section>
+        }
+        @if(screen=="connection") {
+            <section class="panel connection-form"><h2>Conexão com a API</h2><p>Use seu usuário de painel, senha e chave privada, ou um token JWT existente. As credenciais ficam somente na memória desta aba.</p>
+            <div class="tabs"><button class="@(useToken?"":"selected")" @onclick="()=>useToken=false">Usuário e chave privada</button><button class="@(useToken?"selected":"")" @onclick="()=>useToken=true">Token JWT</button></div>
+            <form @onsubmit="Connect" @onsubmit:preventDefault>
+            <fieldset disabled="@(Session.Running||Session.Connecting)">
+            @if(useToken){<label>Token JWT<input type="password" autocomplete="off" @bind="token" /></label>}
+            else {<label>Usuário do painel<input type="email" autocomplete="username" @bind="username" placeholder="usuario@empresa.com.br" /></label><label>Senha do painel<input type="password" autocomplete="current-password" @bind="loginPassword" /></label><label>Chave privada da API<input type="password" autocomplete="off" @bind="key" /></label><p class="hint">No painel Skymail: Configurações da conta → Interface API → SECRET KEY.</p>}
+            <div class="actions"><button type="submit" class="primary">@(Session.Connecting?"Conectando…":"Conectar à API")</button><button type="button" @onclick="Disconnect">Desconectar</button><button type="button" @onclick="Demo">Entrar em demonstração</button></div>
+            </fieldset></form></section>
+        } else if(screen is "home" or "licenses-menu" or "reports-menu" or "groups-menu" or "tools") {
+            <section class="cards">
+                @foreach(var card in Cards){<button class="operation-card" @onclick="()=>Navigate(card.Key)"><span class="card-icon">@card.Icon</span><h2>@card.Label</h2><p>@card.Note</p><span class="card-arrow">→</span></button>}
+            </section>
+        } else if(screen=="processes") {
+            @if(Session.Jobs.Count==0){<section class="panel empty"><h2>Nenhuma operação nesta sessão</h2><p>As consultas e os lotes iniciados aparecerão aqui.</p></section>}
+            @foreach(var job in Session.Jobs){<section class="panel process-card"><div class="section-heading"><h2>@job.Name</h2><span class="badge @(job.Running?"info":job.Attention?"warning":"ok")">@(job.Running?"Em andamento":job.Attention?"Exige conferência":"Concluída")</span></div><p>Início @job.Started.ToString("HH:mm:ss") · @job.Rows.Count registros · @job.Messages.Count mensagens</p><p>@job.Status</p><div class="actions"><button @onclick="()=>OpenJob(job)">Abrir detalhes</button>@if(job.Running){<button disabled="@job.Stop" @onclick="()=>{job.Stop=true;Session.Notify();}">Parar após a chamada atual</button>}<button @onclick='()=>Session.Download(job,"results")'>Exportar CSV</button></div></section>}
+        } else if(screen=="help") {
+            <section class="panel help"><h2>Conexão</h2><p>Use as credenciais do usuário administrativo do painel. A API determina as permissões sobre clientes e contas.</p><h2>Arquivos e formatos</h2><p>Importe CSV/TXT em UTF-8, até 5 MB e 10.000 registros. Cada módulo oferece um arquivo de exemplo. Revise a conferência antes de enviar.</p><h2>Execução e contratação</h2><p>As operações usam as mesmas validações do aplicativo Windows. Contratações adicionais exigem confirmação explícita. Parar interrompe os próximos envios, sem desfazer os anteriores. Resultados pendentes ou indeterminados devem ser conferidos no painel antes de repetir.</p><h2>Processos e relatórios</h2><p>Você pode navegar entre os módulos sem interromper um processo. Mantenha esta aba aberta durante a execução. Fechar ou atualizar encerra a sessão e perde o histórico em memória; baixe resultados e logs antes de sair.</p><h2>Limite da API</h2><p>As chamadas compartilham um intervalo mínimo de 550 ms. Quando a API informar o esgotamento das requisições, a próxima chamada aguardará a renovação. Outras aplicações usando a mesma conexão também podem consumir esse limite.</p><h2>Credenciais</h2><p>Senha, chave privada e token não são salvos no navegador. A chave privada assina o JWT localmente. O encaminhamento no Vercel usa exclusivamente a API Skymail.</p><h2>Demonstração</h2><p>As operações em lote podem ser simuladas. Os módulos avançados consultam dados reais e exigem conexão.</p></section>
+        } else if(screen!="details") {
+            @if(Session.Demo&&!IsBasic){<div class="notice warning">Este módulo consulta e altera dados reais na API, então não tem simulação. Conecte-se à API para usá-lo.</div>}
+            <section class="panel">
+                <p class="guidance">@Guidance</p>
+                <fieldset disabled="@(ModuleRunning||Session.Demo&&!IsBasic)">
+                @if(screen=="licenses"){
+                    <button @onclick="ConsultProducts">1. Consultar produtos do cliente</button>
+                    <label>2. Produto de destino<select @bind="destination" disabled="@(catalog.Count==0)"><option value="">Selecione o produto</option>@foreach(var p in catalog){<option value="@(p.ClientId+":"+p.Product.Id)">@p.Name</option>}</select></label>
+                    <p class="hint">A lista traz apenas os produtos de caixa contratados pelo cliente no painel Skymail.</p><a href="https://suporte.skynova.com.br/hc/pt-br/articles/6559217444244-Adicionar-produto-no-painel-de-controle" target="_blank" rel="noopener noreferrer">Como adicionar um produto no painel</a>
+                }
+                @if(screen=="upgrade") {<label>Domínio<input @bind="domain" placeholder="empresa.com.br" /></label><label>Uso mínimo (%)<input type="number" min="1" max="100" @bind="threshold" /></label>}
+                @if(screen is "received" or "sent") {
+                    <div class="two-cols"><div><label>Remetente @(screen=="received"?"(opcional)":"")<select @bind="originMode"><option value="domain">Domínio — um por vez</option><option value="accounts">Contas de e-mail — uma por linha</option></select><textarea @bind="origins" placeholder="@(originMode=="domain"?"empresa.com.br":"ana@empresa.com.br")"></textarea></label></div><div><label>Destinatário @(screen=="sent"?"(opcional)":"")<select @bind="destinationMode"><option value="domain">Domínio — um por vez</option><option value="accounts">Contas de e-mail — uma por linha</option></select><textarea @bind="destinations" placeholder="@(destinationMode=="domain"?"empresa.com.br":"bia@empresa.com.br")"></textarea></label></div></div>
+                    <div class="actions period"><span>Período</span>@foreach(var days in new[]{1,7,30,90}){<button disabled="@(DomainReport&&days>7)" @onclick="()=>Period(days)">@(days==1?"Hoje":days+" dias")</button>}</div>
+                    <div class="two-cols"><label>De<input type="date" @bind="from" @bind:format="yyyy-MM-dd" max="@DateTime.Today.ToString("yyyy-MM-dd")" /></label><label>Até<input type="date" @bind="to" @bind:format="yyyy-MM-dd" max="@DateTime.Today.ToString("yyyy-MM-dd")" /></label></div><p class="hint">@(DomainReport?"Domínio em qualquer lado: até 7 dias.":"Somente contas: até 90 dias.")</p>
+                } else {
+                    <label>@InputLabel
+                    @if(screen=="replace"){<input @bind="input" @bind:event="oninput" placeholder="ana@empresa.com.br" />}
+                    else {<textarea class="accounts-input" @bind="input" @bind:event="oninput" placeholder="@Placeholder" spellcheck="false"></textarea>}</label>
+                    @if(screen!="replace") {<div class="actions"><label class="file-button">Importar CSV / TXT<InputFile OnChange="Import" accept=".csv,.txt" /></label><button @onclick="Sample">Baixar CSV de exemplo</button><button disabled="@(input.Length==0)" @onclick='()=>input=""'>Limpar</button></div>}
+                }
+                @if(screen=="status"){<label>Status<select @bind="status"><option value="disabled">Desabilitar</option><option value="noaccess">Bloquear acesso</option><option value="active">Ativar</option></select></label>}
+                @if(screen=="passwords") {<label>Modalidade<select @bind="passwordMode"><option value="same">Mesma senha para todas as contas</option><option value="different">Senha diferente por conta</option><option value="force">Exigir troca no próximo login</option></select></label>}
+                @if(screen=="replace") {<label>Novo endereço<input @bind="newMail" @bind:event="oninput" placeholder="ana.silva@empresa.com.br" /></label>}
+                @if(screen=="replace"||screen=="passwords"&&passwordMode=="same"){
+                    <label>@(screen=="replace"?"Nova senha":"Senha para todas as contas")<input type="@(showPassword?"text":"password")" @bind="password" @bind:event="oninput" autocomplete="new-password" /></label>
+                    @if(screen=="replace"){<p class="hint @(PasswordError==null?"text-ok":"")">@(PasswordError??"Senha válida.") · @password.Length/8 caracteres (mínimo) · @PasswordRules.TypeCount(password)/3 tipos (mínimo)</p>}
+                    <div class="actions"><button @onclick="()=>showPassword=!showPassword">@(showPassword?"Ocultar senha":"Mostrar senha")</button><button @onclick="()=>password=PasswordRules.Generate(input,newMail)">Gerar senha</button></div>
+                }
+                @if(screen=="replace"){<label>Manter endereço antigo como apelido?<select @bind="keepAlias"><option value="true">Sim</option><option value="false">Não</option></select></label>}
+                <button class="primary execute" disabled="@(screen=="replace"&&PasswordError!=null)" @onclick="Execute">Conferir e executar</button>
+                </fieldset>
+            </section>
+        }
+        @if(ActiveJob is {} resultJob && (resultJob.Rows.Count>0||resultJob.Messages.Count>0)) {<JobResults @key="resultJob.Id" Job="resultJob" Upgrade="FromUpgrade" />}
+        @if(screen=="details"&&ActiveJob is {} detailJob){<button @onclick="()=>Navigate(detailJob.Kind)">Abrir módulo para nova operação</button>}
+        <footer>Comunicação com a API Skymail · Credenciais apenas nesta sessão · Mantenha a aba aberta durante as operações.</footer>
+    </main>
+    @if(Session.Dialog is {} dialog){<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title"><h2 id="confirm-title">@dialog.Title</h2><pre>@dialog.Text</pre><div class="actions"><button autofocus @onclick="()=>Session.Answer(false)">Cancelar</button><button class="@(dialog.Destructive?"danger-button":"primary")" @onclick="()=>Session.Answer(true)">@dialog.Accept</button></div></section></div>}
+</div>
+@code {
+    private record Menu(string Key,string Label,string Icon,string Note="");
+    private readonly Menu[] menus={new("home","Operações em lote","⌂"),new("licenses-menu","Licenças","◈"),new("reports-menu","Relatórios","▥"),new("groups-menu","Grupos","♧"),new("tools","Ferramentas","⚙"),new("processes","Processos","◷"),new("connection","Conexão com a API","♙"),new("help","Ajuda e formatos","?")};
+    private readonly Menu[] operations={new("delete","Excluir contas","×","Remova as contas de e-mail selecionadas."),new("restore","Recuperar contas","↶","Restaure contas excluídas com conferência de licenças."),new("status","Alterar status","◉","Desabilite, bloqueie ou reative contas."),new("passwords","Gerenciar senhas","⚿","Altere senhas ou exija a troca no login."),new("rename","Renomear contas","↔","Atualize o endereço das caixas postais."),new("attributes","Atualizar atributos","≡","Edite nome, cargo, telefones e outros campos."),new("delete-groups","Excluir grupos","×","Remova permanentemente grupos de e-mail."),new("delete-dns","Excluir zonas DNS","◇","Remova permanentemente as zonas dos domínios."),new("licenses","Alteração de licenças em lote","◈","Troque o produto de várias caixas, com conferência conta a conta."),new("upgrade","Análise para Upgrade","↗","Encontre caixas perto do limite e veja o produto sugerido."),new("received","Mensagens recebidas","↓","Quem mandou para seu domínio ou suas contas."),new("sent","Mensagens enviadas","↑","Para onde seu domínio ou suas contas enviaram mensagens."),new("groups","Criar grupos em lote","♧","Importe grupos com membros, escritores e moderadores."),new("groupedit","Gerenciar membros","⊕","Inclua ou remova pessoas de vários grupos."),new("replace","Substituição de colaborador","↔","Renomeie a conta, troque a senha e mantenha ou remova o apelido antigo.")};
+    private string screen="home",input="",domain="",destination="",presetProduct="",password="",newMail="",status="disabled",passwordMode="same",origins="",destinations="",originMode="domain",destinationMode="domain";
+    private string username="",loginPassword="",key="",token="";private bool dark=true,showPassword,useToken,keepAlias=true;private double scale=1;private decimal threshold=80;
+    private DateTime from=DateTime.Today.AddDays(-6),to=DateTime.Today;private IReadOnlyList<ClientLicenseProduct> catalog=Array.Empty<ClientLicenseProduct>();private WebJob? visible;
+    // Mesmo estado de conexão do aplicativo Windows: demonstração, conectado ou não conectado.
+    private string ConnectionTone=>Session.Demo?"info":Session.Api.HasToken?"ok":"warning";
+    private string ConnectionHeading=>Session.Demo?"Modo demonstração":Session.Api.HasToken?"Conectado à API":"Não conectado";
+    private string ConnectionNote=>Session.Demo?"Nenhuma solicitação é enviada à API.":Session.Api.HasToken?"Token ativo nesta sessão.":"Configure o acesso para executar.";
+    private bool IsBasic=>operations.Take(8).Any(m=>m.Key==screen);
+    private bool ModuleRunning=>Session.Jobs.Any(j=>j.Kind==screen&&j.Running);
+    private WebJob? ActiveJob=>visible??Session.Jobs.FirstOrDefault(j=>j.Kind==screen&&j.Running);
+    private bool DomainReport=>origins.Trim().Length>0&&originMode=="domain"||destinations.Trim().Length>0&&destinationMode=="domain";
+    private string? PasswordError=>PasswordRules.ReplacementError(password,input,newMail);
+    private string NavKey=>screen is "licenses" or "upgrade"?"licenses-menu":screen is "received" or "sent"?"reports-menu":screen is "groups" or "groupedit"?"groups-menu":screen=="replace"?"tools":screen=="details"?"processes":IsBasic?"home":screen;
+    private string Title=>screen=="details"?visible?.Name??"Detalhes do processo":operations.Concat(menus).FirstOrDefault(m=>m.Key==screen)?.Label??"SkyAPI";
+    private string Subtitle=>screen=="home"?"Escolha uma operação. Confira os dados antes de enviar.":screen=="processes"?"Operações em andamento e concluídas nesta sessão.":"Confira os dados antes de executar. Todos os resultados podem ser exportados em CSV.";
+    private IEnumerable<Menu> Cards=>screen switch{"home"=>operations.Take(8),"licenses-menu"=>operations.Skip(8).Take(2),"reports-menu"=>operations.Skip(10).Take(2),"groups-menu"=>operations.Skip(12).Take(2),_=>operations.Skip(14)};
+    private string Guidance=>screen switch{"licenses"=>"Consulte os produtos disponíveis na conexão, selecione o produto de destino e cole as contas — uma por linha. O aplicativo confere cada caixa e só envia depois da sua confirmação.","upgrade"=>"Informe o domínio e o uso mínimo. Deixe as contas vazias para analisar o domínio inteiro. Nenhuma licença é alterada.","groups"=>"Uma linha por grupo, ou várias linhas com o mesmo e-mail para somar participantes. Use | entre pessoas na mesma coluna.","groupedit"=>"Informe o grupo, a ação de adicionar/remover, o papel e o endereço. O grupo não é apagado.","replace"=>"Renomeia a conta, troca a senha e define se o endereço antigo continua como apelido. O acompanhamento pode durar até 11 minutos.","received" or "sent"=>"Escolha domínio ou contas em cada lado. Com domínio em qualquer lado, o período máximo é de 7 dias.","attributes"=>"Use o cabeçalho mailbox e os atributos desejados. Campos vazios não apagam valores existentes.",_=>"Informe os registros ou importe um arquivo. A conferência apresenta o que será enviado antes de executar."};
+    private string InputLabel=>screen switch{"groups"=>"CSV dos grupos — grupo,email,membros,escritores,moderadores","groupedit"=>"CSV das alterações — "+BatchInput.GroupEditHeader,"replace"=>"Conta atual","upgrade"=>"Contas (opcional) — vazio para analisar o domínio inteiro","licenses"=>"3. Contas — uma por linha","attributes"=>"CSV de atributos","rename"=>"Conta atual, novo endereço — uma alteração por linha","delete-dns"=>"Domínios — um por linha",_=>passwordMode=="different"&&screen=="passwords"?"Conta;senha — uma por linha":"Contas — uma por linha; CSV/TXT, vírgula, ponto e vírgula ou TAB"};
+    private string Placeholder=>screen switch{"groups"=>"grupo,email,membros,escritores,moderadores\nFinanceiro,financeiro@empresa.com.br,ana@empresa.com.br,,","groupedit"=>BatchInput.GroupEditHeader+"\nfinanceiro@empresa.com.br,remover,membro,ana@empresa.com.br","attributes"=>"mailbox,Nome,Cargo\nana@empresa.com.br,Ana,Analista","rename"=>"ana@empresa.com.br,ana.silva@empresa.com.br","delete-dns"=>"empresa.com.br",_=>"ana@empresa.com.br\nbia@empresa.com.br"};
+    protected override void OnInitialized(){Session.Changed+=Changed;}
+    protected override async Task OnAfterRenderAsync(bool first){if(first){var prefs=await JS.InvokeAsync<Preferences>("sky.preferences");dark=prefs.Dark;scale=Math.Clamp(prefs.Scale,.9,1.4);StateHasChanged();}}
+    private sealed record Preferences(bool Dark,double Scale);
+    private void Changed()=>_ = InvokeAsync(()=>{if(visible==null&&screen is not ("home" or "processes"))visible=Session.Jobs.FirstOrDefault(j=>j.Kind==screen&&j.Running);StateHasChanged();});
+    // Como no aplicativo: o botão que promete sair da demonstração sai dela de fato.
+    private void GoToConnection(){if(Session.Demo)Session.Demo=false;Navigate("connection");}
+    private void Navigate(string next){screen=next;visible=Session.Jobs.FirstOrDefault(j=>j.Kind==next&&j.Running);input=password=newMail=domain=destination=presetProduct="";catalog=Array.Empty<ClientLicenseProduct>();Session.Error="";}
+    private void OpenJob(WebJob job){screen="details";visible=job;Session.Error="";}
+    private async Task ToggleTheme(){dark=!dark;await SavePreferences();}
+    private async Task ChangeScale(double delta){scale=Math.Clamp(Math.Round(scale+delta,1),.9,1.4);await SavePreferences();}
+    private Task SavePreferences()=>JS.InvokeVoidAsync("sky.savePreferences",dark,scale).AsTask();
+    private async Task Connect(){try{await Session.Connect(username,loginPassword,key,useToken?token:"");Navigate("home");}catch(Exception ex){Session.Error=ex is InvalidOperationException?ex.Message:"Não foi possível conectar. Verifique o acesso à API.";}finally{loginPassword=key=token="";}}
+    private async Task Disconnect(){await Session.Disconnect();catalog=Array.Empty<ClientLicenseProduct>();}
+    private async Task Demo(){await Session.Disconnect();Session.Demo=true;Navigate("home");}
+    private void Period(int days){from=DateTime.Today.AddDays(1-days);to=DateTime.Today;}
+    private async Task Import(InputFileChangeEventArgs e){try{using var stream=e.File.OpenReadStream(5_000_000);using var reader=new StreamReader(stream,new System.Text.UTF8Encoding(false,true));input=await reader.ReadToEndAsync();}catch{Session.Error="Não foi possível importar. Use um CSV/TXT em UTF-8 de até 5 MB.";}}
+    private Task Sample()=>JS.InvokeVoidAsync("sky.download","SkyAPI_modelo_"+screen+".csv",screen=="groups"?"grupo,email,membros,escritores,moderadores\r\nFinanceiro,financeiro@empresa.com.br,ana@empresa.com.br|bia@empresa.com.br,,":screen=="groupedit"?BatchInput.GroupEditHeader+"\r\nfinanceiro@empresa.com.br,remover,membro,ana@empresa.com.br":IsBasic?Planner.Template(BasicOperation):"conta\r\nana@empresa.com.br\r\nbia@empresa.com.br").AsTask();
+    private Operation BasicOperation=>screen switch{"delete"=>Operation.DeleteAccounts,"restore"=>Operation.RestoreAccounts,"status"=>Operation.AccountStatus,"passwords"=>passwordMode=="different"?Operation.PasswordDifferent:passwordMode=="force"?Operation.ForcePasswordChange:Operation.PasswordSame,"rename"=>Operation.RenameAccounts,"attributes"=>Operation.Attributes,"delete-groups"=>Operation.DeleteGroups,_=>Operation.DeleteDns};
+    private Task ConsultProducts()=>Session.Run("licenses",Title,async job=>{catalog=Array.Empty<ClientLicenseProduct>();destination="";catalog=await Session.Service.ClientProducts();var matches=catalog.Where(p=>p.Product.Name==presetProduct).ToArray();if(matches.Length==1)destination=matches[0].ClientId+":"+matches[0].Product.Id;foreach(var p in catalog)Session.Add(job,new(p.Product.Name,"Disponível","Cliente: "+p.ClientName));Session.Status(job,catalog.Count+" produtos de caixa retornados pela API. Selecione o produto de destino.");});
+    private async Task Execute(){
+        var kind=screen;var name=Title;var text=input;var secret=password;var next=newMail;var d=domain.Trim();var t=threshold;var keep=keepAlias;var a=origins;var b=destinations;var ad=originMode=="domain";var bd=destinationMode=="domain";var start=from;var end=to;var op=BasicOperation;var st=status;bool basic=IsBasic;
+        var selected=catalog.FirstOrDefault(p=>p.ClientId+":"+p.Product.Id==destination);
+        await Session.Run(kind,name,async job=>{
+            if(basic)await Session.Basic(job,op,text,st,secret);
+            else if(Session.Demo)throw new InvalidOperationException("Este módulo exige conexão real.");
+            else switch(kind){case "licenses":if(selected==null)throw new InvalidOperationException("Consulte os produtos e selecione o destino.");await Session.Licenses(job,text,selected);break;case "upgrade":await Session.Upgrade(job,text,d,t);break;case "groups":case "groupedit":await Session.Groups(job,text,kind=="groupedit");break;case "received":case "sent":await Session.Reports(job,kind=="sent",a,ad,b,bd,start,end);break;case "replace":await Session.Replace(job,text.Trim(),next.Trim(),secret,keep);break;}
+        });
+        if(screen==kind){password="";if(kind=="passwords"&&passwordMode=="different")input="";}
+    }
+    private void FromUpgrade(OperationRow[] rows){if(rows.Length==0)return;if(rows.Any(r=>!r.SuggestionInPanel)){Session.Error="Há produto sugerido ainda não contratado. Adicione-o no painel e consulte novamente.";return;}if(rows.Select(r=>r.Suggested).Distinct().Count()!=1){Session.Error="Selecione contas com o mesmo produto sugerido.";return;}Navigate("licenses");input=string.Join("\n",rows.Select(r=>r.Account));presetProduct=rows[0].Suggested;}
+    public void Dispose(){Session.Changed-=Changed;}
+}

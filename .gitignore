@@ -1,0 +1,21 @@
+# SDK baixado para compilar sem instalacao global
+.tools/
+
+# Saidas de compilacao
+bin/
+obj/
+WEB/dist/
+WEB/publish/
+WEB/.dotnet/
+WEB/.vercel/
+EXE/release/
+
+# Binarios grandes: nao cabem no GitHub (limite de 100 MB por arquivo).
+# Publique o executavel como anexo de uma Release, nao como arquivo do repositorio.
+*.exe
+*.rar
+*.zip
+*.pfx
+
+# Ferramentas locais
+.claude/launch.json

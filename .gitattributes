@@ -1,0 +1,22 @@
+# Normaliza a quebra de linha no repositorio, independente da configuracao de cada maquina.
+* text=auto
+
+# O build da Vercel roda em Linux: estes arquivos precisam de LF mesmo no Windows.
+# Um .sh com CRLF quebra no shebang ("bad interpreter: /usr/bin/env bash^M").
+*.sh   text eol=lf
+*.js   text eol=lf
+*.json text eol=lf
+*.css  text eol=lf
+*.html text eol=lf
+*.svg  text eol=lf
+
+# Scripts do Windows continuam com CRLF.
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Binarios: o Git nao deve tentar converter nada.
+*.png  binary
+*.ico  binary
+*.cer  binary
+*.exe  binary
+*.rar  binary

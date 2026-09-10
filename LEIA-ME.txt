@@ -1,0 +1,31 @@
+SkyAPI - assistente de operacoes da API Skymail
+===============================================
+
+Esta pasta guarda as duas versoes do mesmo aplicativo. As regras de negocio sao
+identicas nas duas: o nucleo C# (SkyAPI.Core) e compartilhado.
+
+  EXE\   Aplicativo Windows (WPF).
+         Comece por EXE\LEIA-ME.md.
+         Compilar: EXE\compilar.cmd
+         Testes:   EXE\tests
+
+  WEB\   Versao para navegador (Blazor WebAssembly + Vercel).
+         Comece por WEB\LEIA-ME-WEB.md.
+         Compilar: WEB\scripts\publicar.cmd
+         Testes:   WEB\tests
+
+  .tools\  SDK .NET 8 usado pelos scripts. Nao vai para o repositorio.
+
+  SkyAPI-1.1.11.exe   Executavel assinado da versao 1.1.11.
+  SkyAPI-1.1.11.rar   Pacote de distribuicao da mesma versao.
+  SkyAPI-CodeSigning.cer  Certificado publico usado na assinatura.
+
+ATENCAO ao mexer nas regras
+---------------------------
+WEB\Core e EXE\src\SkyAPI.Core precisam continuar iguais. Ao corrigir uma regra,
+copie a alteracao para os dois lados e rode os testes dos dois.
+
+ATENCAO ao enviar para o GitHub
+-------------------------------
+O .exe (162 MB) e o .rar (51 MB) passam do limite de 100 MB por arquivo do GitHub.
+O .gitignore ja os deixa de fora. Publique o executavel como anexo de uma Release.
