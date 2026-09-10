@@ -9,6 +9,10 @@ public sealed class ApiFailure : InvalidOperationException {
 public sealed record ClientLicenseProduct(string ClientId,string ClientName,MailProduct Product,bool ShowClient) {
     public string Name=>ShowClient?Product.Name+" — "+ClientName:Product.Name;
 }
+/// <summary>Resultado da conferência de restauração: quem precisa de licença nova, o resumo mostrado
+/// antes de enviar, e as contas que a API não reconhece como excluídas — que ficam de fora do envio,
+/// porque insistir nelas só gastaria chamada e limite de requisições para colher o mesmo erro.</summary>
+public sealed record RestorationPlan(HashSet<string> PurchaseAccounts,string Summary,IReadOnlyList<string> Unrecognized);
 public sealed record GroupStock(string ClientId,int? Available);
 public sealed record ProductStock(string ClientId,int? Available,string[] Items);
 /// <summary>Resultado de uma varredura de relatório: registros lidos, total anunciado pela API e se ela
@@ -35,7 +39,7 @@ public sealed class AdvancedService {
         return JsonValue.Array(r.Data).Select(d=>new MailProduct(JsonValue.Text(d,"name"),JsonValue.Text(d,"productId"),JsonValue.Text(d,"type")))
             .Where(p=>p.Name.Length>0).DistinctBy(p=>p.Name).ToArray();
     }
-    public async Task<(HashSet<string> PurchaseAccounts,string Summary)> RestorationPurchases(IEnumerable<string> accounts) {
+    public async Task<RestorationPlan> RestorationPurchases(IEnumerable<string> accounts) {
         var catalog=await ClientProducts();
         var batches=new Dictionary<(string Client,string Product),List<string>>();
         var productOf=new Dictionary<(string Client,string Product),MailProduct?>();
@@ -74,8 +78,8 @@ public sealed class AdvancedService {
                 "; contratação de até "+Math.Max(0,batch.Value.Count-free)+".");
         }
         if(unrecognized.Count>0)lines.Insert(0,"A API não reconhece "+unrecognized.Count+" conta(s) como excluída(s): "+
-            string.Join(", ",unrecognized)+". Elas não consomem licença; cada uma terá o seu próprio resultado no relatório.");
-        return(purchase,string.Join("\n",lines));
+            string.Join(", ",unrecognized)+". Não consomem licença e NÃO serão enviadas; aparecem no relatório como não enviadas.");
+        return new(purchase,string.Join("\n",lines),unrecognized);
     }
     public async Task<string> ClientForDomain(string domain) {
         if(!Planner.IsDomain(domain))throw new InvalidOperationException("Domínio inválido.");

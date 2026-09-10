@@ -57,6 +57,9 @@ internal static class AdvancedTests {
         check(parcial.Summary.Contains(ausente) && parcial.Summary.Contains("não reconhece"),
             "1.1.12: conferencia avisa quais contas a API nao reconhece como excluidas");
         check(!parcial.PurchaseAccounts.Contains(ausente),"1.1.12: conta nao reconhecida nao entra na contratacao");
+        check(parcial.Unrecognized.Count==1 && parcial.Unrecognized[0]==ausente,
+            "1.1.12: conferencia devolve quais contas ficam de fora do envio");
+        check(parcial.Summary.Contains("NÃO serão enviadas"),"1.1.12: resumo diz que elas nao serao enviadas");
 
         // Falha de conexao ou permissao continua interrompendo: nenhuma outra resposta seria confiavel.
         var negadoService=new AdvancedService((method,path,fields)=>Task.FromResult(

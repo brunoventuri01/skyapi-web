@@ -1358,6 +1358,7 @@ public sealed partial class MainWindow : Window {
     private async Task RunBatch() {
         if (plan == null || busy) return;
         var snapshot = plan.Items.ToArray();
+        var skipped = Array.Empty<string>();
         if(!demo && snapshot.Any(i=>i.Path.EndsWith("/restore"))) {
             busy=true;connectButton.IsEnabled=false;
             try {
@@ -1366,7 +1367,11 @@ public sealed partial class MainWindow : Window {
                 if(!ConfirmAdvanced("Conferência de licenças para restauração\n\n"+restoration.Summary+
                     (count>0?"\n\nAutoriza contratar até "+count+" licenças adicionais durante a restauração, com cobrança na conta Skymail?":""),
                     count>0?"Contratar até "+count+" licenças e restaurar":"Restaurar"))return;
-                snapshot=snapshot.Select(i=>restoration.PurchaseAccounts.Contains(i.Target)
+                // A conferencia ja apurou que estas nao existem como excluidas. Enviar assim mesmo so
+                // gastaria uma chamada e uma fatia do limite de requisicoes para colher o mesmo 404.
+                skipped=restoration.Unrecognized.ToArray();
+                snapshot=snapshot.Where(i=>!skipped.Contains(i.Target,StringComparer.OrdinalIgnoreCase))
+                    .Select(i=>restoration.PurchaseAccounts.Contains(i.Target)
                     ?i with {Fields=new Dictionary<string,string>(i.Fields){["confirm_purchase"]="true"}}:i).ToArray();
             }catch(InvalidOperationException ex){MessageBox.Show(this,ex.Message,"Conferência de licenças");return;}
             finally {busy=false;connectButton.IsEnabled=true;}
@@ -1413,6 +1418,16 @@ public sealed partial class MainWindow : Window {
                 grid.Items.Refresh();
                 return Task.CompletedTask;
             }, () => stopRequested, 0);
+
+            // Ficam no fim do relatorio, deixando claro que nao chegaram a ser enviadas.
+            foreach (var account in skipped) {
+                var row = new ApiResult(account, "Restaurar conta", "Não enviada", null,
+                    "A API não reconhece esta conta como excluída. A conferência a deixou de fora do envio.");
+                results.Add(row);
+                writer.WriteLine(ResultLine(row));
+            }
+            if (skipped.Length > 0) grid.Items.Refresh();
+
             stop.IsEnabled = false;
         } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException) {
             MessageBox.Show(this,

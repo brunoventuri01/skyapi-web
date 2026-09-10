@@ -92,11 +92,15 @@ public sealed class WebSession : IDisposable {
     public async Task Basic(WebJob job,Operation op,string text,string status,string password) {
         var plan=Planner.Build(op,text,status,password);
         if(plan.Errors.Count>0)throw new InvalidOperationException(string.Join("\n",plan.Errors));
-        var items=plan.Items.ToArray();int purchase=0;string extra="";
+        var items=plan.Items.ToArray();int purchase=0;string extra="";string[] skipped=Array.Empty<string>();
         if(op==Operation.RestoreAccounts&&!Demo) {
             var restore=await Service.RestorationPurchases(items.Select(i=>i.Target));purchase=restore.PurchaseAccounts.Count;extra="\n"+restore.Summary;
             if(extra.Contains("não informadas"))extra+="\nA quantidade de licenças livres não foi informada; o limite considera uma por conta.";
-            items=items.Select(i=>restore.PurchaseAccounts.Contains(i.Target)?i with {Fields=new Dictionary<string,string>(i.Fields){["confirm_purchase"]="true"}}:i).ToArray();
+            // A conferencia ja apurou que estas nao existem como excluidas. Enviar assim mesmo so
+            // gastaria uma chamada e uma fatia do limite de requisicoes para colher o mesmo 404.
+            skipped=restore.Unrecognized.ToArray();
+            items=items.Where(i=>!skipped.Contains(i.Target,StringComparer.OrdinalIgnoreCase))
+                .Select(i=>restore.PurchaseAccounts.Contains(i.Target)?i with {Fields=new Dictionary<string,string>(i.Fields){["confirm_purchase"]="true"}}:i).ToArray();
         }
         var summary="Registros: "+items.Length+"\n"+string.Join("\n",plan.Warnings)+extra+"\n\n"+string.Join("\n",items.Select(i=>i.Target+" — "+i.Description));
         if(!await Review(job,summary,purchase,op is Operation.DeleteAccounts or Operation.DeleteGroups or Operation.DeleteDns,!Demo))return;
@@ -106,6 +110,8 @@ public sealed class WebSession : IDisposable {
             if(Demo){await Task.Delay(100);return new(item.Target,item.Description,"Simulado",null,"Demonstração: nenhuma chamada à API.");}
             return await Api.ExecuteAsync(item);
         },result=>{job.Progress++;Add(job,new(result.Target,result.Status,result.Message));return Task.CompletedTask;},()=>job.Stop,0);
+        foreach(var account in skipped)
+            Add(job,new(account,"Não enviada","A API não reconhece esta conta como excluída. A conferência a deixou de fora do envio."));
         End(job);
     }
     public async Task Licenses(WebJob job,string input,ClientLicenseProduct selected) {
