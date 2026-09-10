@@ -273,6 +273,19 @@ Grupos com membros, bons para o teste 4: `financeiro.teste@`, `comercial.teste@`
 Saldo de licenças de Grupo de E-mail: **0** (cliente 40958).
 
 
+## Versão 1.1.12
+
+Em **Gerenciar senhas**, com "Mesma senha para todas as contas":
+
+- Campo vazio: o indicador mostra `0/8 caracteres`, `0/3 tipos` e **Conferir registros** fica desabilitado.
+- `12345678901234`: continua desabilitado, com `1/3 tipos`.
+- `Rmvn2958`: indicador verde com "Senha válida" e o botão libera.
+- **Mostrar senha** revela o texto; editar no campo revelado revalida; **Ocultar senha** preserva o que foi digitado.
+- **Gerar senha**: preenche 10 caracteres e libera o botão.
+- Trocar para "Senha diferente por conta" ou "Exigir troca no próximo login": o campo de senha some, os registros
+  são limpos e o botão volta a ficar habilitado.
+- Ordem dos campos: modalidade, senha, registros — a mesma na versão web.
+
 ## Versão 1.1.11
 
 - Licenças: não deve haver campo Domínio. Ordem: consultar produtos, selecionar destino, informar contas.

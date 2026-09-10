@@ -1,6 +1,6 @@
 {
   "name": "skyapi-web",
-  "version": "1.1.11",
+  "version": "1.1.12",
   "private": true,
   "description": "SkyAPI Web — cliente Blazor WebAssembly e encaminhamento para a API Skymail.",
   "engines": { "node": ">=20" }

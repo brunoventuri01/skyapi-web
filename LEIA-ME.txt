@@ -6,7 +6,7 @@ identicas nas duas: o nucleo C# (SkyAPI.Core) e compartilhado.
 
   EXE\   Aplicativo Windows (WPF).
          Comece por EXE\LEIA-ME.md.
-         Compilar: EXE\compilar.cmd
+         Compilar: EXE\compilar.cmd   (compila e ja assina)
          Testes:   EXE\tests
 
   WEB\   Versao para navegador (Blazor WebAssembly + Vercel).
@@ -16,14 +16,58 @@ identicas nas duas: o nucleo C# (SkyAPI.Core) e compartilhado.
 
   .tools\  SDK .NET 8 usado pelos scripts. Nao vai para o repositorio.
 
-  SkyAPI-1.1.11.exe   Executavel assinado da versao 1.1.11.
-  SkyAPI-1.1.11.rar   Pacote de distribuicao da mesma versao.
-  SkyAPI-CodeSigning.cer  Certificado publico usado na assinatura.
+  EXE\SkyAPI-1.1.12.exe   Versao 1.1.12, assinada com o certificado autoassinado.
+  SkyAPI-1.1.11.exe       Versao anterior, sem assinatura nenhuma.
+  SkyAPI-1.1.11.rar       Pacote de distribuicao da 1.1.11.
+  SkyAPI-CodeSigning.cer  Parte publica do certificado autoassinado de assinatura.
+
+
+ASSINATURA: o que funciona aqui NAO funciona no cliente
+-------------------------------------------------------
+Esta maquina roda com o Smart App Control ligado (imposicao). Ele bloqueia binario
+novo e desconhecido com o erro 0x800711C7, "uma politica de Controle de Aplicativo
+bloqueou este arquivo". Por isso EXE\compilar.cmd chama EXE\tools\assinar.ps1 e
+assina o executavel logo depois de compilar.
+
+O certificado usado (CN=SkyAPI Code Signing) e AUTOASSINADO e esta instalado como
+raiz confiavel nesta maquina. Isso resolve o teste local e so isso.
+
+No computador de um cliente esse certificado nao vale nada: o Windows nao conhece a
+raiz, o SmartScreen mostra "editor desconhecido" e o Smart App Control - ligado por
+padrao em instalacao limpa do Windows 11 - bloqueia o programa do mesmo jeito.
+
+Para distribuir e preciso um certificado de code signing publicamente confiavel:
+  - EV (token fisico ou HSM na nuvem): reputacao imediata no SmartScreen. E o que
+    evita o aviso ja no primeiro download. Mais caro.
+  - OV: mais barato, mas a reputacao e construida com o tempo; os primeiros clientes
+    ainda veem aviso do SmartScreen.
+Desde 2023 todo certificado de code signing publico exige a chave em hardware, entao
+e token fisico ou servico de assinatura na nuvem (Azure Trusted Signing, DigiCert
+KeyLocker, SSL.com eSigner e semelhantes).
+
+Com o certificado novo em maos, basta passar o thumbprint dele:
+  powershell -ExecutionPolicy Bypass -File EXE\tools\assinar.ps1 ^
+    -Arquivo EXE\SkyAPI-1.1.12.exe -Thumbprint <THUMBPRINT-DO-CERTIFICADO-NOVO>
+ou trocar o valor padrao dentro de assinar.ps1.
+
+
+TESTES: um conjunto esbarra na mesma politica
+---------------------------------------------
+A mesma politica bloqueia as DLLs recem compiladas de EXE\tests. Depois de compilar,
+assine a pasta de saida antes de rodar, por exemplo:
+
+  Get-ChildItem EXE\tests\SkyAPI.UiTests\bin\Debug\net8.0-windows\win-x64 -Filter SkyAPI*.dll |
+    ForEach-Object { powershell -File EXE\tools\assinar.ps1 -Arquivo $_.FullName }
+
+Alternativa para o conjunto do nucleo: compilar os mesmos fontes com outro nome de
+assembly, fora da pasta do projeto.
+
 
 ATENCAO ao mexer nas regras
 ---------------------------
 WEB\Core e EXE\src\SkyAPI.Core precisam continuar iguais. Ao corrigir uma regra,
 copie a alteracao para os dois lados e rode os testes dos dois.
+
 
 ATENCAO ao enviar para o GitHub
 -------------------------------

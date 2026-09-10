@@ -60,7 +60,7 @@ internal static class Native {
 }
 
 public sealed partial class MainWindow : Window {
-    private const string Version = "1.1.11";
+    private const string Version = "1.1.12";
 
     private readonly ApiClient api = new();
     private readonly List<ApiResult> results = new();
@@ -1030,6 +1030,11 @@ public sealed partial class MainWindow : Window {
         Steps(1);
         var p = new StackPanel();
 
+        // Declarados aqui porque a conferência de senha, montada logo abaixo, precisa travar
+        // o botão de avançar, que só é criado no fim da tela.
+        Button? confirm = null;
+        Action validatePassword = () => { };
+
         if (operation is Operation.PasswordSame or Operation.PasswordDifferent or Operation.ForcePasswordChange) {
             var modes = new ComboBox {
                 ItemsSource = new[] { "Mesma senha para todas as contas", "Senha diferente por conta", "Exigir troca no próximo login" },
@@ -1054,9 +1059,63 @@ public sealed partial class MainWindow : Window {
         }
 
         if (operation == Operation.PasswordSame) {
+            // Mesma conferência da Substituição de colaborador: quem entrega a senha precisa
+            // poder vê-la e gerá-la, e uma senha fraca aqui falharia em todas as contas do lote
+            // — melhor barrar antes de gastar milhares de chamadas à API.
             var pass = new PasswordBox { Password = sharedPassword };
-            pass.PasswordChanged += (s, e) => sharedPassword = pass.Password;
+            var plainPassword = new TextBox {
+                Text = sharedPassword,
+                Margin = new Thickness(0, 5, 0, 0),
+                Visibility = Visibility.Collapsed
+            };
+            string Secret() => plainPassword.Visibility == Visibility.Visible ? plainPassword.Text : pass.Password;
+
+            var feedback = Txt("", 12, Theme.Muted, top: 6);
+            feedback.Name = "SharedPasswordFeedback";
+            validatePassword = () => {
+                var secret = Secret();
+                sharedPassword = secret;
+                // Sem endereços na comparação: a mesma senha vale para todas as contas do lote,
+                // então não há um par de endereços a confrontar como há na substituição.
+                var error = PasswordRules.ReplacementError(secret);
+                bool valid = error == null;
+                feedback.Text = (valid ? "Senha válida. " : "Senha incompleta. ") + secret.Length + "/8 caracteres (mínimo); " +
+                    PasswordRules.TypeCount(secret) + "/3 tipos (mínimo).\n" +
+                    (error ?? "Sem sequências. A política da organização ainda vale no envio.");
+                feedback.Foreground = valid ? Theme.Ok : Theme.Muted;
+                if (confirm != null) confirm.IsEnabled = valid;
+            };
+            pass.PasswordChanged += (s, e) => validatePassword();
+            plainPassword.TextChanged += (s, e) => validatePassword();
+
             Field(p, "Nova senha (sujeita à política da organização)", pass);
+            p.Children.Add(plainPassword);
+            p.Children.Add(feedback);
+
+            var passwordTools = new WrapPanel { Margin = new Thickness(0, 10, 0, 0) };
+            var reveal = Btn("Mostrar senha", () => { });
+            reveal.Click += (s, e) => {
+                bool showing = plainPassword.Visibility == Visibility.Visible;
+                if (showing) {
+                    pass.Password = plainPassword.Text;
+                    plainPassword.Visibility = Visibility.Collapsed;
+                    pass.Visibility = Visibility.Visible;
+                } else {
+                    plainPassword.Text = pass.Password;
+                    pass.Visibility = Visibility.Collapsed;
+                    plainPassword.Visibility = Visibility.Visible;
+                }
+                reveal.Content = showing ? "Mostrar senha" : "Ocultar senha";
+                validatePassword();
+            };
+            passwordTools.Children.Add(reveal);
+            passwordTools.Children.Add(Btn("Gerar senha", () => {
+                var generated = PasswordRules.Generate();
+                pass.Password = generated;
+                plainPassword.Text = generated;
+                validatePassword();
+            }));
+            p.Children.Add(passwordTools);
         }
 
         string format = operation switch {
@@ -1107,15 +1166,17 @@ public sealed partial class MainWindow : Window {
 
         var actions = new WrapPanel { Margin = new Thickness(0, 16, 0, 0) };
         actions.Children.Add(Btn("← Voltar", Home));
-        actions.Children.Add(Btn("Conferir registros →", () => {
+        confirm = Btn("Conferir registros →", () => {
             plan = Planner.Build(operation, input.Text, status, sharedPassword);
             if (plan.Errors.Count > 0) {
                 errors.Text = string.Join("\n", plan.Errors.Take(15)) + (plan.Errors.Count > 15 ? "\n… e mais " + (plan.Errors.Count - 15) + " erro(s)." : "");
                 return;
             }
             Review();
-        }, true));
+        }, true);
+        actions.Children.Add(confirm);
         p.Children.Add(actions);
+        validatePassword();   // estado inicial do aviso e do botão
         page.Children.Add(Panel(p));
     }
 

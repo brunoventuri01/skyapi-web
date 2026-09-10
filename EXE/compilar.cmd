@@ -16,6 +16,12 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-copy /y release\SkyAPI.exe SkyAPI-1.1.11.exe >nul
-echo Concluido: SkyAPI-1.1.11.exe
+copy /y release\SkyAPI.exe SkyAPI-1.1.12.exe >nul
+
+rem Sem assinatura o executavel recem compilado nao abre com o Smart App Control ligado.
+rem O certificado padrao e autoassinado: serve para testar aqui, nao para distribuir.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\assinar.ps1" -Arquivo "%~dp0SkyAPI-1.1.12.exe"
+if errorlevel 1 echo AVISO: o executavel ficou sem assinatura.
+
+echo Concluido: SkyAPI-1.1.12.exe
 pause

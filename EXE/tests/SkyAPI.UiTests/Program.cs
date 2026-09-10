@@ -107,6 +107,48 @@ internal static class Program {
                 }
             }
             var flags=BindingFlags.Instance|BindingFlags.NonPublic;
+
+            // 1.1.12: Gerenciar senhas ganhou a mesma conferencia de senha da Substituicao de colaborador.
+            void OpenPasswords(SkyAPI.Core.Operation mode) {
+                typeof(MainWindow).GetField("sharedPassword",flags)!.SetValue(window,"");
+                typeof(MainWindow).GetField("operation",flags)!.SetValue(window,mode);
+                typeof(MainWindow).GetMethod("Input",flags)!.Invoke(window,null);
+                Pump(window);
+            }
+            OpenPasswords(SkyAPI.Core.Operation.PasswordSame);
+            {
+                var shared=Find<PasswordBox>(window).Single();
+                var advance=Find<Button>(window).Single(b=>Equals(b.Content,"Conferir registros →"));
+                var note=Find<TextBlock>(window).Single(b=>b.Name=="SharedPasswordFeedback");
+                Check(!advance.IsEnabled && note.Text.Contains("0/8 caracteres"),"1.1.12: senha compartilhada vazia trava a conferencia");
+                shared.Password="12345678901234";
+                Check(!advance.IsEnabled && note.Text.Contains("1/3 tipos"),"1.1.12: senha compartilhada numerica invalida ao digitar");
+                shared.Password="Rmvn2958";
+                Check(advance.IsEnabled && note.Text.Contains("Senha válida") && note.Foreground==Theme.Ok,"1.1.12: tres tipos liberam a conferencia");
+                Check(typeof(MainWindow).GetField("sharedPassword",flags)!.GetValue(window) as string=="Rmvn2958","1.1.12: senha digitada chega ao lote");
+                var showShared=Find<Button>(window).Single(b=>Equals(b.Content,"Mostrar senha"));
+                showShared.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var sharedPlain=Find<TextBox>(window).Single(b=>b.Text=="Rmvn2958");
+                sharedPlain.Text="Abc123";
+                Check(!advance.IsEnabled,"1.1.12: senha compartilhada visivel curta trava a conferencia");
+                sharedPlain.Text="rmvn295!";
+                Check(advance.IsEnabled,"1.1.12: validacao atualiza tambem na senha visivel");
+                showShared.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Check(shared.Password=="rmvn295!" && advance.IsEnabled,"1.1.12: ocultar preserva a senha compartilhada");
+                var generateShared=Find<Button>(window).Single(b=>Equals(b.Content,"Gerar senha"));
+                generateShared.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Check(shared.Password.Length==10 && advance.IsEnabled,"1.1.12: gerador preenche senha compartilhada valida");
+                Check(typeof(MainWindow).GetField("sharedPassword",flags)!.GetValue(window) as string==shared.Password,"1.1.12: senha gerada chega ao lote");
+                if(dark && scale==1.0){Pump(window);SaveWindow(window,"senhas-1.1.12");}
+            }
+            // Sem campo de senha, a conferencia nao pode ficar travada pela regra de senha.
+            foreach(var mode in new[]{SkyAPI.Core.Operation.PasswordDifferent,SkyAPI.Core.Operation.ForcePasswordChange}) {
+                OpenPasswords(mode);
+                Check(!Find<PasswordBox>(window).Any(),"1.1.12: "+mode+" nao mostra campo de senha unica");
+                Check(Find<Button>(window).Single(b=>Equals(b.Content,"Conferir registros →")).IsEnabled,"1.1.12: "+mode+" avanca sem senha unica");
+            }
+            typeof(MainWindow).GetField("sharedPassword",flags)!.SetValue(window,"");
+
             var job=typeof(MainWindow).GetMethod("Job",flags)!.Invoke(window,new object[]{"licenses"})!;
             void Set(string field,object value)=>job.GetType().GetField(field)!.SetValue(job,value);
             Set("Started",DateTime.Now.AddMinutes(-1));Set("Finished",DateTime.Now);

@@ -1,10 +1,10 @@
 # SkyAPI — Skynova
 
-Versão 1.1.11 para homologação interna. Windows 10/11 x64.
+Versão 1.1.12. Windows 10/11 x64.
 
 ## Para utilizar
 
-1. Abra SkyAPI-1.1.11.exe com dois cliques. Não é necessário instalar .NET, habilitar PowerShell nem executar como administrador.
+1. Abra SkyAPI-1.1.12.exe com dois cliques. Não é necessário instalar .NET, habilitar PowerShell nem executar como administrador.
 2. Para conhecer a interface sem alterações reais, clique em **Experimentar demonstração**. Escolha uma operação, preencha o exemplo e percorra a conferência e a simulação.
 3. Para operações reais, abra **Conexão com a API**. Informe o usuário, senha e chave privada do painel, ou um token JWT existente. Se não souber onde obter a chave privada, use o link **Não sabe onde pegar a chave privada? Clique aqui.** logo abaixo do campo: ele mostra o caminho e abre o tutorial oficial da Skymail.
 4. Escolha a operação, importe um CSV UTF-8 ou cole os registros. O botão **Salvar modelo** gera o formato necessário.
@@ -16,7 +16,8 @@ Versão 1.1.11 para homologação interna. Windows 10/11 x64.
 
 - Exclusão e restauração de contas.
 - Desabilitar, bloquear acesso ou reativar contas.
-- Senha igual para todos, senha individual ou troca obrigatória no próximo login.
+- Senha igual para todos, senha individual ou troca obrigatória no próximo login. Com senha igual para todos,
+  a senha é conferida enquanto você digita, com **Mostrar senha** e **Gerar senha**.
 - Renomeação de contas.
 - Atualização de atributos de caixa postal.
 - Exclusão de grupos de e-mail e zonas DNS.
@@ -197,6 +198,33 @@ Esta é uma entrega funcional candidata à homologação, não uma certificaçã
 
 Antes de distribuir aos clientes, execute o modo de demonstração no Windows; confira importação, navegação, relatório e parada; depois valide autenticação e cada operação em contas, grupos e domínios de teste autorizados, inclusive casos de falha. Assine o EXE pelo processo corporativo quando aprovado.
 
+## Assinatura e distribuição
+
+O executável é assinado por `compilar.cmd`, que chama `tools/assinar.ps1` logo depois de compilar. Sem assinatura,
+um binário recém-compilado não abre em máquina com o Smart App Control ligado: o Windows recusa com
+`0x800711C7`, "uma política de Controle de Aplicativo bloqueou este arquivo".
+
+O certificado usado hoje (`CN=SkyAPI Code Signing`, autoassinado, em `SkyAPI-CodeSigning.cer`) resolve apenas
+onde a sua raiz está instalada — a máquina de desenvolvimento. **Ele não serve para entregar a clientes:** no
+computador deles o Windows não conhece essa raiz, o SmartScreen apresenta "editor desconhecido" e o Smart App
+Control, ligado por padrão em instalação limpa do Windows 11, bloqueia o programa.
+
+Para distribuir é preciso um certificado de code signing publicamente confiável. Um certificado **EV** dá
+reputação imediata no SmartScreen e evita o aviso já no primeiro download; um **OV** custa menos, mas a
+reputação é construída com o tempo e os primeiros clientes ainda veem o aviso. Desde 2023 a chave precisa ficar
+em hardware, então é token físico ou serviço de assinatura em nuvem.
+
+Com o certificado novo, informe o thumbprint dele:
+
+```
+powershell -ExecutionPolicy Bypass -File tools/assinar.ps1 -Arquivo SkyAPI-1.1.12.exe -Thumbprint <NOVO>
+```
+
+ou altere o valor padrão dentro de `tools/assinar.ps1`.
+
+A mesma política bloqueia as DLLs recém-compiladas de `tests/`. Assine a pasta de saída antes de rodar os
+testes, ou compile os mesmos fontes com outro nome de assembly fora da pasta do projeto.
+
 ## Código-fonte
 
 Requer SDK .NET 8 atualizado no computador de desenvolvimento. Execute `compilar.cmd`, ou:
@@ -216,6 +244,25 @@ Interface: WPF em C#, montada em código: `Program.cs` (telas), `Theme.cs` (pale
 O ícone `src/SkyAPI.Desktop/Assets/skyapi.ico` é gerado a partir do SVG da marca por `tools/gerar-icone.ps1`; refaça-o apenas se a marca mudar. O teste de transporte usa um HttpMessageHandler falso: nenhum teste acessa a Skymail.
 
 Referências da marca: https://skynova.com.br/ e https://skynova.com.br/wp-content/uploads/2025/06/Logo-Skynova-Web_Prancheta-1.svg. Paleta do SVG: #263570, #0059A7, #1E4180, #009DDB, #184893, #00BAEB, #0074BC. Base funcional: api-requests.ps1 do ZIP fornecido pelo solicitante.
+
+## Novidades da 1.1.12
+
+Em **Gerenciar senhas**, a modalidade "Mesma senha para todas as contas" passou a ter a mesma conferência da
+Substituição de colaborador: pelo menos 8 caracteres e 3 tipos entre maiúsculas, minúsculas, números e símbolos,
+sem sequências de 3 caracteres em ordem direta, inversa ou de teclado. O indicador mostra a contagem enquanto
+você digita e **Conferir registros** fica desabilitado até a senha atender à regra — uma senha fraca falharia em
+todas as contas do lote, e barrar antes evita gastar milhares de chamadas à API para nada.
+
+**Mostrar senha** revela o que foi digitado, para conferir antes de entregar. **Gerar senha** preenche uma senha
+aleatória de 10 caracteres que já passa pelas regras. A política de senha da organização continua valendo no
+envio: ela é aplicada pela API e pode ser mais exigente que essa conferência.
+
+Diferença proposital em relação à Substituição de colaborador: lá a senha também não pode conter partes dos
+endereços envolvidos, porque são dois endereços conhecidos. No lote a mesma senha vale para todas as contas, e
+não há um par de endereços a confrontar.
+
+A ordem dos campos ficou igual à do aplicativo nas duas versões: primeiro a modalidade, depois a senha, por
+último os registros. Trocar de modalidade limpa senha e registros, porque o formato dos registros muda.
 
 ## Novidades da 1.1.11
 

@@ -80,7 +80,7 @@ main {
     gap: calc(16 * var(--u));
 }
 
-main > * { max-width: calc(1180 * var(--u)); width: 100%; }
+main > * { width: 100%; }
 
 /* ----------------------------------------------------------- sidebar --- */
 .sidebar .logo {
@@ -134,10 +134,11 @@ main > * { max-width: calc(1180 * var(--u)); width: 100%; }
     cursor: pointer;
 }
 
-.nav span { color: var(--muted); font-size: calc(15 * var(--u)); width: calc(18 * var(--u)); text-align: center; }
+.nav .icon { color: var(--muted); font-size: calc(17 * var(--u)); flex: 0 0 auto; }
+.nav > span { flex: 1 1 auto; min-width: 0; }
 .nav:hover { background: var(--hover); }
 .nav.active { background: var(--accent-soft); color: var(--heading); font-weight: 600; }
-.nav.active span { color: var(--cyan); }
+.nav.active .icon { color: var(--cyan); }
 
 .nav b {
     margin-left: auto;
@@ -430,8 +431,16 @@ form { display: flex; flex-direction: column; gap: calc(12 * var(--u)); }
 /* ---------------------------------------------------------- cartões ---- */
 .cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(calc(260 * var(--u)), 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: calc(14 * var(--u));
+}
+
+.cards.cards-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+@media (max-width: 1120px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+@media (max-width: 820px) {
+    .cards, .cards.cards-two { grid-template-columns: minmax(0, 1fr); }
 }
 
 .operation-card {
@@ -461,8 +470,12 @@ form { display: flex; flex-direction: column; gap: calc(12 * var(--u)); }
     border-radius: calc(11 * var(--u));
     background: var(--accent-soft);
     color: var(--cyan);
-    font-size: calc(19 * var(--u));
+    font-size: calc(21 * var(--u));
+    flex: 0 0 auto;
 }
+
+/* Exclusões usam o mesmo vermelho do aplicativo. */
+.card-icon.danger { background: var(--danger-soft); color: var(--danger); }
 
 .operation-card h2 {
     margin: calc(16 * var(--u)) 0 0;
@@ -477,12 +490,71 @@ form { display: flex; flex-direction: column; gap: calc(12 * var(--u)); }
     color: var(--muted);
 }
 
-.card-arrow {
-    margin-top: auto;
-    padding-top: calc(10 * var(--u));
-    color: var(--accent);
-    font-size: calc(15 * var(--u));
+.icon { display: block; }
+
+/* Indicador de etapas: Operação, Dados, Conferência, Resultado. */
+.steps {
+    display: flex;
+    align-items: center;
+    gap: calc(12 * var(--u));
+    margin: 0;
+    padding: calc(14 * var(--u)) calc(18 * var(--u));
+    list-style: none;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: calc(12 * var(--u));
+    overflow-x: auto;
 }
+
+.steps li {
+    display: flex;
+    align-items: center;
+    gap: calc(9 * var(--u));
+    font-size: calc(13 * var(--u));
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.steps li + li::before {
+    content: "";
+    display: block;
+    width: calc(28 * var(--u));
+    height: calc(2 * var(--u));
+    margin-right: calc(3 * var(--u));
+    background: var(--line-soft);
+    flex: 1 1 calc(28 * var(--u));
+}
+
+/* O traco depois de uma etapa concluida acompanha o azul, como no aplicativo. */
+.steps li.done + li::before { background: var(--accent); }
+
+.step-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(26 * var(--u));
+    height: calc(26 * var(--u));
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--field);
+    color: var(--muted);
+    font-size: calc(12 * var(--u));
+    font-weight: 600;
+    flex: 0 0 auto;
+}
+
+.steps li.done .step-badge, .steps li.now .step-badge {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+}
+
+.steps li.now .step-name { color: var(--ink); font-weight: 600; }
+.steps li:not(:last-child) { flex: 1 1 auto; }
+.steps li:not(:last-child) .step-name { flex: 0 0 auto; }
+
+/* Formato dos registros, logo abaixo do rótulo do campo. */
+.field-note { font-weight: 400; font-size: calc(12 * var(--u)); color: var(--muted); }
 
 .process-card { gap: calc(8 * var(--u)); }
 

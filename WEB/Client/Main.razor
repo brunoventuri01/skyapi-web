@@ -7,17 +7,27 @@
         <img class="logo" src="@(dark?"skynova-escuro.svg":"skynova-claro.svg")" alt="Skynova — Soluções em nuvem" />
         <div class="brand">SkyAPI<small>ASSISTENTE DE OPERAÇÕES</small></div>
         <nav aria-label="Menu principal">
-        @foreach(var item in menus){<button class="nav @(NavKey==item.Key?"active":"")" @onclick="()=>Navigate(item.Key)"><span aria-hidden="true">@item.Icon</span>@item.Label@if(item.Key=="processes"&&Session.Running){<b>@Session.Jobs.Count(j=>j.Running)</b>}</button>}
+        @foreach(var item in menus){<button class="nav @(NavKey==item.Key?"active":"")" @onclick="()=>Navigate(item.Key)"><Icon Name="@item.Icon" /><span>@(item.Key=="processes"&&Session.Running?item.Label+" ("+Session.Jobs.Count(j=>j.Running)+")":item.Label)</span></button>}
         </nav>
         <div class="sidebar-bottom">
             <small>TAMANHO DO TEXTO</small><div class="scale-controls"><button aria-label="Diminuir texto" @onclick="()=>ChangeScale(-.1)">−</button><span>@((int)Math.Round(scale*100))%</span><button aria-label="Aumentar texto" @onclick="()=>ChangeScale(.1)">+</button></div>
             <button class="theme" @onclick="ToggleTheme">@(dark?"☼ Modo claro":"☾ Modo escuro")</button>
             <div class="connection-card @ConnectionTone"><strong>● @ConnectionHeading</strong><small>@ConnectionNote</small></div>
-            <small>SkyAPI 1.1.11 · Web</small>
+            <small>SkyAPI 1.1.12 · Web</small>
         </div>
     </aside>
     <main>
         <header><div><h1>@Title</h1><p>@Subtitle</p></div><div class="actions"><span class="badge @ConnectionTone">● @ConnectionHeading</span><button class="primary" disabled="@Session.Running" @onclick="GoToConnection">@(Session.Api.HasToken?"Gerenciar conexão":Session.Demo?"Sair da demonstração":"Conectar à API")</button></div></header>
+        @if(ShowSteps){
+            <ol class="steps" aria-label="Etapas da operação">
+                @for(int i=0;i<stepLabels.Length;i++){
+                    <li class="@(i<Step?"done":i==Step?"now":"")">
+                        <span class="step-badge">@if(i<Step){<Icon Name="check" />}else{<text>@(i+1)</text>}</span>
+                        <span class="step-name">@stepLabels[i]</span>
+                    </li>
+                }
+            </ol>
+        }
         @if(Session.Error.Length>0){<div class="notice danger" role="alert">@Session.Error<button class="dismiss" aria-label="Fechar mensagem" @onclick='()=>Session.Error=""'>×</button></div>}
         @if(Session.RateMessage.Length>0){<div class="notice warning" role="status">@Session.RateMessage</div>}
         @if(ActiveJob is {} current){
@@ -36,8 +46,8 @@
             <div class="actions"><button type="submit" class="primary">@(Session.Connecting?"Conectando…":"Conectar à API")</button><button type="button" @onclick="Disconnect">Desconectar</button><button type="button" @onclick="Demo">Entrar em demonstração</button></div>
             </fieldset></form></section>
         } else if(screen is "home" or "licenses-menu" or "reports-menu" or "groups-menu" or "tools") {
-            <section class="cards">
-                @foreach(var card in Cards){<button class="operation-card" @onclick="()=>Navigate(card.Key)"><span class="card-icon">@card.Icon</span><h2>@card.Label</h2><p>@card.Note</p><span class="card-arrow">→</span></button>}
+            <section class="cards @(IsSubmenu?"cards-two":"")">
+                @foreach(var card in Cards){<button class="operation-card" @onclick="()=>Navigate(card.Key)"><span class="card-icon @(card.Destructive?"danger":"")"><Icon Name="@card.Icon" /></span><h2>@CardName(card)</h2><p>@CardNote(card)</p></button>}
             </section>
         } else if(screen=="processes") {
             @if(Session.Jobs.Count==0){<section class="panel empty"><h2>Nenhuma operação nesta sessão</h2><p>As consultas e os lotes iniciados aparecerão aqui.</p></section>}
@@ -47,7 +57,7 @@
         } else if(screen!="details") {
             @if(Session.Demo&&!IsBasic){<div class="notice warning">Este módulo consulta e altera dados reais na API, então não tem simulação. Conecte-se à API para usá-lo.</div>}
             <section class="panel">
-                <p class="guidance">@Guidance</p>
+                @if(!IsBasic){<p class="guidance">@Guidance</p>}
                 <fieldset disabled="@(ModuleRunning||Session.Demo&&!IsBasic)">
                 @if(screen=="licenses"){
                     <button @onclick="ConsultProducts">1. Consultar produtos do cliente</button>
@@ -55,26 +65,24 @@
                     <p class="hint">A lista traz apenas os produtos de caixa contratados pelo cliente no painel Skymail.</p><a href="https://suporte.skynova.com.br/hc/pt-br/articles/6559217444244-Adicionar-produto-no-painel-de-controle" target="_blank" rel="noopener noreferrer">Como adicionar um produto no painel</a>
                 }
                 @if(screen=="upgrade") {<label>Domínio<input @bind="domain" placeholder="empresa.com.br" /></label><label>Uso mínimo (%)<input type="number" min="1" max="100" @bind="threshold" /></label>}
+                @if(screen=="status"){<label>Status<select @bind="status"><option value="disabled">Desabilitar</option><option value="noaccess">Bloquear acesso</option><option value="active">Ativar</option></select></label>}
+                @if(screen=="passwords") {<label>Como deseja gerenciar as senhas?<select @bind="passwordMode" @bind:after="ClearPasswordInput"><option value="same">Mesma senha para todas as contas</option><option value="different">Senha diferente por conta</option><option value="force">Exigir troca no próximo login</option></select></label>}
+                @if(SharedPassword){@PasswordFields}
                 @if(screen is "received" or "sent") {
                     <div class="two-cols"><div><label>Remetente @(screen=="received"?"(opcional)":"")<select @bind="originMode"><option value="domain">Domínio — um por vez</option><option value="accounts">Contas de e-mail — uma por linha</option></select><textarea @bind="origins" placeholder="@(originMode=="domain"?"empresa.com.br":"ana@empresa.com.br")"></textarea></label></div><div><label>Destinatário @(screen=="sent"?"(opcional)":"")<select @bind="destinationMode"><option value="domain">Domínio — um por vez</option><option value="accounts">Contas de e-mail — uma por linha</option></select><textarea @bind="destinations" placeholder="@(destinationMode=="domain"?"empresa.com.br":"bia@empresa.com.br")"></textarea></label></div></div>
                     <div class="actions period"><span>Período</span>@foreach(var days in new[]{1,7,30,90}){<button disabled="@(DomainReport&&days>7)" @onclick="()=>Period(days)">@(days==1?"Hoje":days+" dias")</button>}</div>
                     <div class="two-cols"><label>De<input type="date" @bind="from" @bind:format="yyyy-MM-dd" max="@DateTime.Today.ToString("yyyy-MM-dd")" /></label><label>Até<input type="date" @bind="to" @bind:format="yyyy-MM-dd" max="@DateTime.Today.ToString("yyyy-MM-dd")" /></label></div><p class="hint">@(DomainReport?"Domínio em qualquer lado: até 7 dias.":"Somente contas: até 90 dias.")</p>
                 } else {
                     <label>@InputLabel
+                    @if(IsBasic){<small class="field-note">@Format</small>}
                     @if(screen=="replace"){<input @bind="input" @bind:event="oninput" placeholder="ana@empresa.com.br" />}
                     else {<textarea class="accounts-input" @bind="input" @bind:event="oninput" placeholder="@Placeholder" spellcheck="false"></textarea>}</label>
-                    @if(screen!="replace") {<div class="actions"><label class="file-button">Importar CSV / TXT<InputFile OnChange="Import" accept=".csv,.txt" /></label><button @onclick="Sample">Baixar CSV de exemplo</button><button disabled="@(input.Length==0)" @onclick='()=>input=""'>Limpar</button></div>}
+                    @if(screen!="replace") {<div class="actions"><label class="file-button">@(IsBasic?"Selecionar CSV…":"Importar CSV / TXT")<InputFile OnChange="Import" accept=".csv,.txt" /></label><button @onclick="Sample">@(IsBasic?"Salvar modelo":"Baixar CSV de exemplo")</button><button disabled="@(input.Length==0)" @onclick='()=>input=""'>Limpar</button></div>}
                 }
-                @if(screen=="status"){<label>Status<select @bind="status"><option value="disabled">Desabilitar</option><option value="noaccess">Bloquear acesso</option><option value="active">Ativar</option></select></label>}
-                @if(screen=="passwords") {<label>Modalidade<select @bind="passwordMode"><option value="same">Mesma senha para todas as contas</option><option value="different">Senha diferente por conta</option><option value="force">Exigir troca no próximo login</option></select></label>}
                 @if(screen=="replace") {<label>Novo endereço<input @bind="newMail" @bind:event="oninput" placeholder="ana.silva@empresa.com.br" /></label>}
-                @if(screen=="replace"||screen=="passwords"&&passwordMode=="same"){
-                    <label>@(screen=="replace"?"Nova senha":"Senha para todas as contas")<input type="@(showPassword?"text":"password")" @bind="password" @bind:event="oninput" autocomplete="new-password" /></label>
-                    @if(screen=="replace"){<p class="hint @(PasswordError==null?"text-ok":"")">@(PasswordError??"Senha válida.") · @password.Length/8 caracteres (mínimo) · @PasswordRules.TypeCount(password)/3 tipos (mínimo)</p>}
-                    <div class="actions"><button @onclick="()=>showPassword=!showPassword">@(showPassword?"Ocultar senha":"Mostrar senha")</button><button @onclick="()=>password=PasswordRules.Generate(input,newMail)">Gerar senha</button></div>
-                }
-                @if(screen=="replace"){<label>Manter endereço antigo como apelido?<select @bind="keepAlias"><option value="true">Sim</option><option value="false">Não</option></select></label>}
-                <button class="primary execute" disabled="@(screen=="replace"&&PasswordError!=null)" @onclick="Execute">Conferir e executar</button>
+                @if(screen=="replace"){@PasswordFields}
+                @if(screen=="replace"){<label>Manter endereço antigo como apelido?<select @bind="KeepAlias"><option value="sim">Sim</option><option value="nao">Não</option></select></label>}
+                <button class="primary execute" disabled="@(PasswordError!=null)" @onclick="Execute">Conferir e executar</button>
                 </fieldset>
             </section>
         }
@@ -85,9 +93,35 @@
     @if(Session.Dialog is {} dialog){<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title"><h2 id="confirm-title">@dialog.Title</h2><pre>@dialog.Text</pre><div class="actions"><button autofocus @onclick="()=>Session.Answer(false)">Cancelar</button><button class="@(dialog.Destructive?"danger-button":"primary")" @onclick="()=>Session.Answer(true)">@dialog.Accept</button></div></section></div>}
 </div>
 @code {
-    private record Menu(string Key,string Label,string Icon,string Note="");
-    private readonly Menu[] menus={new("home","Operações em lote","⌂"),new("licenses-menu","Licenças","◈"),new("reports-menu","Relatórios","▥"),new("groups-menu","Grupos","♧"),new("tools","Ferramentas","⚙"),new("processes","Processos","◷"),new("connection","Conexão com a API","♙"),new("help","Ajuda e formatos","?")};
-    private readonly Menu[] operations={new("delete","Excluir contas","×","Remova as contas de e-mail selecionadas."),new("restore","Recuperar contas","↶","Restaure contas excluídas com conferência de licenças."),new("status","Alterar status","◉","Desabilite, bloqueie ou reative contas."),new("passwords","Gerenciar senhas","⚿","Altere senhas ou exija a troca no login."),new("rename","Renomear contas","↔","Atualize o endereço das caixas postais."),new("attributes","Atualizar atributos","≡","Edite nome, cargo, telefones e outros campos."),new("delete-groups","Excluir grupos","×","Remova permanentemente grupos de e-mail."),new("delete-dns","Excluir zonas DNS","◇","Remova permanentemente as zonas dos domínios."),new("licenses","Alteração de licenças em lote","◈","Troque o produto de várias caixas, com conferência conta a conta."),new("upgrade","Análise para Upgrade","↗","Encontre caixas perto do limite e veja o produto sugerido."),new("received","Mensagens recebidas","↓","Quem mandou para seu domínio ou suas contas."),new("sent","Mensagens enviadas","↑","Para onde seu domínio ou suas contas enviaram mensagens."),new("groups","Criar grupos em lote","♧","Importe grupos com membros, escritores e moderadores."),new("groupedit","Gerenciar membros","⊕","Inclua ou remova pessoas de vários grupos."),new("replace","Substituição de colaborador","↔","Renomeie a conta, troque a senha e mantenha ou remova o apelido antigo.")};
+    private record Menu(string Key,string Label,string Icon);
+    private readonly Menu[] menus={
+        new("home","Operações em lote","home"),new("licenses-menu","Licenças","search"),
+        new("reports-menu","Relatórios","report"),new("groups-menu","Grupos","people"),
+        new("replace","Ferramentas","gear"),new("processes","Processos","processes"),
+        new("connection","Conexão com a API","lock"),new("help","Ajuda e formatos","help")};
+
+    // Cada operação carrega os tres nomes que o aplicativo usa: o do cartao da tela inicial,
+    // o do cartao do submenu (quando aparece em um) e o titulo da propria tela.
+    private record Op(string Key,string Icon,string HomeName,string HomeNote,string MenuName,string MenuNote,string Title,bool Destructive=false);
+    private readonly Op[] operations={
+        new("licenses","search","Alterar licenças","Troque produtos com conferência por conta.","Alteração em lote","Troque o produto de várias caixas de uma vez, com conferência conta a conta.","Alteração de licenças em lote"),
+        new("upgrade","upgrade","Analisar upgrade","Encontre caixas próximas do limite.","Análise para Upgrade","Encontre caixas perto do limite e veja o produto sugerido. Não altera nada.","Análise para Upgrade"),
+        new("groups","people","Criar grupos em lote","Importe membros, escritores e moderadores.","Criar grupos em lote","Importe grupos com membros, escritores e moderadores.","Criação de grupos em lote"),
+        new("groupedit","person-add","Gerenciar grupos","Inclua ou remova membros de vários grupos.","Gerenciar membros","Inclua ou remova pessoas de vários grupos de uma vez.","Gerenciar membros de grupos"),
+        new("replace","gear","Substituir colaborador","Renomeie a conta e escolha se mantém o apelido.","","","Substituição de colaborador"),
+        new("received","mail","Mensagens recebidas","Consulte remetentes, domínios e períodos.","Mensagens recebidas","Quem mandou para o seu domínio ou para contas específicas.","Mensagens recebidas"),
+        new("sent","send","Mensagens enviadas","Consulte destinatários, domínios e períodos.","Mensagens enviadas","Para onde o seu domínio ou suas contas mandaram mensagens.","Mensagens enviadas"),
+        new("delete","trash","Excluir contas","Remova as contas de e-mail selecionadas.","","","Excluir contas",true),
+        new("restore","restore","Recuperar contas","Solicite a restauração das contas excluídas.","","","Recuperar contas"),
+        new("status","gear","Alterar status","Desabilite, bloqueie ou reative contas.","","","Alterar status"),
+        new("passwords","lock","Gerenciar senhas","Altere senhas ou exija a troca no login.","","","Gerenciar senhas"),
+        new("rename","rename","Renomear contas","Atualize o endereço das caixas postais.","","","Renomear contas"),
+        new("attributes","contact","Atualizar atributos","Edite nome, cargo, telefones e outros campos.","","","Atualizar atributos"),
+        new("delete-groups","people","Excluir grupos","Remova permanentemente grupos de e-mail.","","","Excluir grupos",true),
+        new("delete-dns","globe","Excluir zonas DNS","Remova permanentemente as zonas dos domínios.","","","Excluir zonas DNS",true)};
+
+    private static readonly string[] batchKeys={"delete","restore","status","passwords","rename","attributes","delete-groups","delete-dns"};
+    private static readonly string[] stepLabels={"Operação","Dados","Conferência","Resultado"};
     private string screen="home",input="",domain="",destination="",presetProduct="",password="",newMail="",status="disabled",passwordMode="same",origins="",destinations="",originMode="domain",destinationMode="domain";
     private string username="",loginPassword="",key="",token="";private bool dark=true,showPassword,useToken,keepAlias=true;private double scale=1;private decimal threshold=80;
     private DateTime from=DateTime.Today.AddDays(-6),to=DateTime.Today;private IReadOnlyList<ClientLicenseProduct> catalog=Array.Empty<ClientLicenseProduct>();private WebJob? visible;
@@ -95,17 +129,69 @@
     private string ConnectionTone=>Session.Demo?"info":Session.Api.HasToken?"ok":"warning";
     private string ConnectionHeading=>Session.Demo?"Modo demonstração":Session.Api.HasToken?"Conectado à API":"Não conectado";
     private string ConnectionNote=>Session.Demo?"Nenhuma solicitação é enviada à API.":Session.Api.HasToken?"Token ativo nesta sessão.":"Configure o acesso para executar.";
-    private bool IsBasic=>operations.Take(8).Any(m=>m.Key==screen);
+    private bool IsBasic=>batchKeys.Contains(screen);
+    private bool IsSubmenu=>screen is "licenses-menu" or "reports-menu" or "groups-menu";
+    private bool IsMenu=>screen=="home"||IsSubmenu;
+    // As etapas do aplicativo mapeadas na navegacao da web: escolher, preencher, conferir e ver o resultado.
+    private bool ShowSteps=>screen is not ("connection" or "help" or "processes" or "details");
+    private int Step=>IsMenu?0:Session.Dialog!=null?2:ActiveJob is {} j&&(j.Rows.Count>0||j.Messages.Count>0)?3:1;
     private bool ModuleRunning=>Session.Jobs.Any(j=>j.Kind==screen&&j.Running);
     private WebJob? ActiveJob=>visible??Session.Jobs.FirstOrDefault(j=>j.Kind==screen&&j.Running);
     private bool DomainReport=>origins.Trim().Length>0&&originMode=="domain"||destinations.Trim().Length>0&&destinationMode=="domain";
-    private string? PasswordError=>PasswordRules.ReplacementError(password,input,newMail);
-    private string NavKey=>screen is "licenses" or "upgrade"?"licenses-menu":screen is "received" or "sent"?"reports-menu":screen is "groups" or "groupedit"?"groups-menu":screen=="replace"?"tools":screen=="details"?"processes":IsBasic?"home":screen;
-    private string Title=>screen=="details"?visible?.Name??"Detalhes do processo":operations.Concat(menus).FirstOrDefault(m=>m.Key==screen)?.Label??"SkyAPI";
-    private string Subtitle=>screen=="home"?"Escolha uma operação. Confira os dados antes de enviar.":screen=="processes"?"Operações em andamento e concluídas nesta sessão.":"Confira os dados antes de executar. Todos os resultados podem ser exportados em CSV.";
-    private IEnumerable<Menu> Cards=>screen switch{"home"=>operations.Take(8),"licenses-menu"=>operations.Skip(8).Take(2),"reports-menu"=>operations.Skip(10).Take(2),"groups-menu"=>operations.Skip(12).Take(2),_=>operations.Skip(14)};
-    private string Guidance=>screen switch{"licenses"=>"Consulte os produtos disponíveis na conexão, selecione o produto de destino e cole as contas — uma por linha. O aplicativo confere cada caixa e só envia depois da sua confirmação.","upgrade"=>"Informe o domínio e o uso mínimo. Deixe as contas vazias para analisar o domínio inteiro. Nenhuma licença é alterada.","groups"=>"Uma linha por grupo, ou várias linhas com o mesmo e-mail para somar participantes. Use | entre pessoas na mesma coluna.","groupedit"=>"Informe o grupo, a ação de adicionar/remover, o papel e o endereço. O grupo não é apagado.","replace"=>"Renomeia a conta, troca a senha e define se o endereço antigo continua como apelido. O acompanhamento pode durar até 11 minutos.","received" or "sent"=>"Escolha domínio ou contas em cada lado. Com domínio em qualquer lado, o período máximo é de 7 dias.","attributes"=>"Use o cabeçalho mailbox e os atributos desejados. Campos vazios não apagam valores existentes.",_=>"Informe os registros ou importe um arquivo. A conferência apresenta o que será enviado antes de executar."};
-    private string InputLabel=>screen switch{"groups"=>"CSV dos grupos — grupo,email,membros,escritores,moderadores","groupedit"=>"CSV das alterações — "+BatchInput.GroupEditHeader,"replace"=>"Conta atual","upgrade"=>"Contas (opcional) — vazio para analisar o domínio inteiro","licenses"=>"3. Contas — uma por linha","attributes"=>"CSV de atributos","rename"=>"Conta atual, novo endereço — uma alteração por linha","delete-dns"=>"Domínios — um por linha",_=>passwordMode=="different"&&screen=="passwords"?"Conta;senha — uma por linha":"Contas — uma por linha; CSV/TXT, vírgula, ponto e vírgula ou TAB"};
+    // O @bind de bool escreve "True"/"False" e não casaria com os valores das opções: a conversão
+    // fica explícita aqui para o select abrir já com a escolha certa.
+    private string KeepAlias{get=>keepAlias?"sim":"nao";set=>keepAlias=value=="sim";}
+    private bool SharedPassword=>screen=="passwords"&&passwordMode=="same";
+    private bool ChecksPassword=>screen=="replace"||SharedPassword;
+    // No lote a mesma senha vai para todas as contas, então não há um par de endereços a confrontar
+    // como há na substituição: aqui a conferência é de força e sequências, e a política da
+    // organização continua valendo no envio.
+    private string? PasswordError=>!ChecksPassword?null:screen=="replace"?PasswordRules.ReplacementError(password,input,newMail):PasswordRules.ReplacementError(password);
+    private string NavKey=>screen is "licenses" or "upgrade"?"licenses-menu":screen is "received" or "sent"?"reports-menu":screen is "groups" or "groupedit"?"groups-menu":screen=="details"?"processes":IsBasic?"home":screen;
+    private string Title=>screen=="details"?visible?.Name??"Detalhes do processo"
+        :operations.FirstOrDefault(o=>o.Key==screen)?.Title
+        ??menus.FirstOrDefault(m=>m.Key==screen)?.Label??"SkyAPI";
+    private string Subtitle=>screen switch{
+        "home"=>"Escolha o que deseja fazer. Você poderá conferir tudo antes de executar.",
+        "licenses-menu"=>"Troca de produto e análise de uso, sempre com conferência antes de enviar.",
+        "reports-menu"=>"Buscas cruzadas de mensagens, por domínio ou por contas, que o painel não oferece.",
+        "groups-menu"=>"Criação em lote e manutenção de quem participa de cada grupo.",
+        "processes"=>"Operações em andamento e as últimas concluídas.",
+        "connection"=>"Use o acesso administrativo do seu painel Skymail.",
+        "help"=>"Tudo o que você precisa para preparar seu lote.",
+        "details"=>"Resultados e exportação da operação selecionada.",
+        _=>IsBasic?"Importe um CSV ou cole os registros. Os dados serão validados antes de continuar."
+            :"Confira os dados antes de executar. Todos os resultados podem ser exportados em CSV."};
+    private IEnumerable<Op> Cards=>screen switch{
+        "licenses-menu"=>operations.Where(o=>o.Key is "licenses" or "upgrade"),
+        "reports-menu"=>operations.Where(o=>o.Key is "received" or "sent"),
+        "groups-menu"=>operations.Where(o=>o.Key is "groups" or "groupedit"),
+        _=>operations};
+    private string CardName(Op o)=>IsSubmenu?o.MenuName:o.HomeName;
+    private string CardNote(Op o)=>IsSubmenu?o.MenuNote:o.HomeNote;
+    // Textos do aplicativo, palavra por palavra.
+    private string Guidance=>screen switch{
+        "licenses"=>"Consulte os produtos disponíveis na conexão, selecione o produto de destino e cole as contas — uma por linha. O aplicativo lê cada caixa, mostra o que muda e só envia depois da sua confirmação.",
+        "upgrade"=>"Informe o domínio e o uso mínimo. Deixe a lista de contas vazia para o aplicativo procurar as caixas do domínio pela própria API; preencha apenas se quiser limitar a análise a algumas contas. Nada é alterado: o resultado é uma sugestão, que você pode enviar para a alteração de licenças.",
+        "groups"=>"Uma linha por grupo, ou várias linhas com o mesmo e-mail de grupo para ir somando pessoas. As colunas de pessoas aceitam vários endereços separados por | ou uma pessoa por linha.",
+        "groupedit"=>"Uma linha por alteração: o grupo, se é para adicionar ou remover, o papel da pessoa e o endereço. Serve para tirar muita gente de muitos grupos de uma vez. O grupo em si não é apagado.",
+        "replace"=>"Renomeia a conta atual para o novo endereço, troca a senha e decide se o endereço antigo continua valendo como apelido. A renomeação pode levar até 10 minutos, e o aplicativo acompanha até 11.",
+        "received" or "sent"=>"Escolha, de cada lado, se vai buscar por domínio ou por contas de e-mail, e preencha a caixa. Domínio é um por vez; contas podem ser várias, uma por linha. Deixe um lado vazio para não filtrar por ele. Quando qualquer um dos lados for domínio, o período é de até 7 dias.",
+        _=>Format};
+    /// <summary>Formato dos registros nos módulos em lote, como o aplicativo descreve.</summary>
+    private string Format=>screen switch{
+        "passwords"=>passwordMode=="different"?"Um registro por linha: e-mail;senha. Tudo após o primeiro ponto e vírgula é a senha, incluindo espaços.":"Um e-mail por linha, sem cabeçalho.",
+        "rename"=>"Duas colunas, sem cabeçalho: e-mail atual,e-mail novo.",
+        "attributes"=>"Com cabeçalho. mailbox é obrigatório; inclua apenas os atributos que deseja alterar.",
+        "delete-dns"=>"Um domínio por linha, sem cabeçalho e sem https://.",
+        _=>"Um e-mail por linha, sem cabeçalho."};
+    private string InputLabel=>screen switch{
+        "groups"=>"CSV dos grupos — cabeçalho grupo,email,membros,escritores,moderadores",
+        "groupedit"=>"CSV das alterações — cabeçalho "+BatchInput.GroupEditHeader,
+        "replace"=>"Conta atual",
+        "upgrade"=>"Contas (opcional) — deixe vazio para analisar o domínio inteiro",
+        "licenses"=>"3. Contas — uma por linha",
+        _=>IsBasic?"Registros":"Contas — uma por linha; CSV/TXT, vírgula, ponto e vírgula ou TAB"};
     private string Placeholder=>screen switch{"groups"=>"grupo,email,membros,escritores,moderadores\nFinanceiro,financeiro@empresa.com.br,ana@empresa.com.br,,","groupedit"=>BatchInput.GroupEditHeader+"\nfinanceiro@empresa.com.br,remover,membro,ana@empresa.com.br","attributes"=>"mailbox,Nome,Cargo\nana@empresa.com.br,Ana,Analista","rename"=>"ana@empresa.com.br,ana.silva@empresa.com.br","delete-dns"=>"empresa.com.br",_=>"ana@empresa.com.br\nbia@empresa.com.br"};
     protected override void OnInitialized(){Session.Changed+=Changed;}
     protected override async Task OnAfterRenderAsync(bool first){if(first){var prefs=await JS.InvokeAsync<Preferences>("sky.preferences");dark=prefs.Dark;scale=Math.Clamp(prefs.Scale,.9,1.4);StateHasChanged();}}
@@ -113,12 +199,24 @@
     private void Changed()=>_ = InvokeAsync(()=>{if(visible==null&&screen is not ("home" or "processes"))visible=Session.Jobs.FirstOrDefault(j=>j.Kind==screen&&j.Running);StateHasChanged();});
     // Como no aplicativo: o botão que promete sair da demonstração sai dela de fato.
     private void GoToConnection(){if(Session.Demo)Session.Demo=false;Navigate("connection");}
-    private void Navigate(string next){screen=next;visible=Session.Jobs.FirstOrDefault(j=>j.Kind==next&&j.Running);input=password=newMail=domain=destination=presetProduct="";catalog=Array.Empty<ClientLicenseProduct>();Session.Error="";}
+    private void Navigate(string next){screen=next;visible=Session.Jobs.FirstOrDefault(j=>j.Kind==next&&j.Running);input=password=newMail=domain=destination=presetProduct="";showPassword=false;catalog=Array.Empty<ClientLicenseProduct>();Session.Error="";}
     private void OpenJob(WebJob job){screen="details";visible=job;Session.Error="";}
     private async Task ToggleTheme(){dark=!dark;await SavePreferences();}
     private async Task ChangeScale(double delta){scale=Math.Clamp(Math.Round(scale+delta,1),.9,1.4);await SavePreferences();}
     private Task SavePreferences()=>JS.InvokeVoidAsync("sky.savePreferences",dark,scale).AsTask();
     private async Task Connect(){try{await Session.Connect(username,loginPassword,key,useToken?token:"");Navigate("home");}catch(Exception ex){Session.Error=ex is InvalidOperationException?ex.Message:"Não foi possível conectar. Verifique o acesso à API.";}finally{loginPassword=key=token="";}}
+    // Um único bloco de senha, montado no lugar certo de cada módulo: antes dos registros no
+    // lote com senha única, depois do novo endereço na substituição — a mesma ordem do aplicativo.
+    private RenderFragment PasswordFields=>@<text>
+        <label>@(SharedPassword?"Nova senha (sujeita à política da organização)":"Nova senha")<input type="@(showPassword?"text":"password")" @bind="password" @bind:event="oninput" autocomplete="new-password" /></label>
+        <p class="hint @(PasswordError==null?"text-ok":"")">@(PasswordError==null?"Senha válida. ":"Senha incompleta. ")@password.Length/8 caracteres (mínimo); @PasswordRules.TypeCount(password)/3 tipos (mínimo).<br />@(PasswordError??(SharedPassword?"Sem sequências. A política da organização ainda vale no envio.":"Sem sequências e sem nomes da conta ou domínio."))</p>
+        <div class="actions"><button type="button" @onclick="()=>showPassword=!showPassword">@(showPassword?"Ocultar senha":"Mostrar senha")</button><button type="button" @onclick="Generate">Gerar senha</button></div>
+    </text>;
+    private void ClearPasswordInput(){password="";input="";}
+    private void Generate() {
+        try{password=SharedPassword?PasswordRules.Generate():PasswordRules.Generate(input,newMail);}
+        catch(InvalidOperationException ex){Session.Error=ex.Message;}
+    }
     private async Task Disconnect(){await Session.Disconnect();catalog=Array.Empty<ClientLicenseProduct>();}
     private async Task Demo(){await Session.Disconnect();Session.Demo=true;Navigate("home");}
     private void Period(int days){from=DateTime.Today.AddDays(1-days);to=DateTime.Today;}

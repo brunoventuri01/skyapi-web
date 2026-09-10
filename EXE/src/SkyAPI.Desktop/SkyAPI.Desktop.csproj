@@ -8,7 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>SkyAPI</AssemblyName>
-    <Version>1.1.11</Version>
+    <Version>1.1.12</Version>
     <Company>Skynova</Company>
     <Product>SkyAPI — Assistente de operações</Product>
     <Description>Administração em lote via API Skymail</Description>

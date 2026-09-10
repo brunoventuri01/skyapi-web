@@ -160,7 +160,7 @@ public sealed class WebSession : IDisposable {
             try {
                 var box=await Service.Mailbox(account);var plan=box.Percent>=threshold?LicenseRules.Plan(box,catalog):null;
                 Add(job,new(account,"Sucesso",box.Percent==null?"Quota ou uso não informado.":box.Percent<threshold?"Abaixo do limite selecionado.":plan==null?"Nenhum upgrade compatível disponível.":plan.InPanel?"Upgrade sugerido; nenhuma alteração realizada.":"Produto sugerido ainda não contratado no painel.") {
-                    Product=box.Product,Suggested=plan?.Product.Name??"",SuggestionInPanel=plan?.InPanel??true,Quota=Display.Gigabytes(box.Quota),Usage=Display.Usage(box.Used,box.Quota)});
+                    Product=box.Product,Suggested=plan?.Product.Name??"",SuggestionInPanel=plan?.InPanel??true,Quota=Display.Gigabytes(box.Quota),Usage=Display.Usage(box.Used,box.Percent)});
             }catch(ApiFailure ex){Add(job,new(account,"Falhou",ex.Message));if(ex.Reply.Stop)break;}
             job.Progress++;Notify();
         }
