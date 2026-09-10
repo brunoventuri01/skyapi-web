@@ -90,7 +90,22 @@
         @if(screen=="details"&&ActiveJob is {} detailJob){<button @onclick="()=>Navigate(detailJob.Kind)">Abrir módulo para nova operação</button>}
         <footer>Comunicação com a API Skymail · Credenciais apenas nesta sessão · Mantenha a aba aberta durante as operações.</footer>
     </main>
-    @if(Session.Dialog is {} dialog){<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title"><h2 id="confirm-title">@dialog.Title</h2><pre>@dialog.Text</pre><div class="actions"><button autofocus @onclick="()=>Session.Answer(false)">Cancelar</button><button class="@(dialog.Destructive?"danger-button":"primary")" @onclick="()=>Session.Answer(true)">@dialog.Accept</button></div></section></div>}
+    @if(Session.Dialog is {} dialog){
+        <div class="modal-backdrop">
+            <section class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+                <h2 id="confirm-title">@dialog.Title</h2>
+                <pre>@dialog.Text</pre>
+                @if(dialog.RequireExecutar){
+                    <label>Digite EXECUTAR para confirmar<input @bind="executar" @bind:event="oninput" autocomplete="off" spellcheck="false" /></label>
+                    <p class="hint">Parar o lote impede os próximos envios, mas não desfaz alterações já realizadas.</p>
+                }
+                <div class="actions">
+                    <button autofocus @onclick="()=>AnswerDialog(false)">Cancelar</button>
+                    <button class="@(dialog.Destructive?"danger-button":"primary")" disabled="@(dialog.RequireExecutar&&executar!="EXECUTAR")" @onclick="()=>AnswerDialog(true)">@dialog.Accept</button>
+                </div>
+            </section>
+        </div>
+    }
 </div>
 @code {
     private record Menu(string Key,string Label,string Icon);
@@ -212,6 +227,8 @@
         <p class="hint @(PasswordError==null?"text-ok":"")">@(PasswordError==null?"Senha válida. ":"Senha incompleta. ")@password.Length/8 caracteres (mínimo); @PasswordRules.TypeCount(password)/3 tipos (mínimo).<br />@(PasswordError??(SharedPassword?"Sem sequências. A política da organização ainda vale no envio.":"Sem sequências e sem nomes da conta ou domínio."))</p>
         <div class="actions"><button type="button" @onclick="()=>showPassword=!showPassword">@(showPassword?"Ocultar senha":"Mostrar senha")</button><button type="button" @onclick="Generate">Gerar senha</button></div>
     </text>;
+    private string executar="";
+    private void AnswerDialog(bool accepted){executar="";Session.Answer(accepted);}
     private void ClearPasswordInput(){password="";input="";}
     private void Generate() {
         try{password=SharedPassword?PasswordRules.Generate():PasswordRules.Generate(input,newMail);}

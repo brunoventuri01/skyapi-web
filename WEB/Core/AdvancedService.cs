@@ -40,7 +40,12 @@ public sealed class AdvancedService {
         var batches=new Dictionary<(string Client,string Product),List<string>>();
         var productOf=new Dictionary<(string Client,string Product),MailProduct?>();
         foreach(var account in accounts) {
-            var reply=await send("GET","mailbox/deleted/"+E(account),null);Require(reply);
+            var reply=await send("GET","mailbox/deleted/"+E(account),null);
+            // Uma unica conta recusada interrompe a conferencia inteira. Sem dizer qual e por que,
+            // sobra descobrir no olho qual das dezenas do lote travou.
+            if(!reply.Success)throw new ApiFailure(reply with {Message=account+": "+(reply.Code==404
+                ?"a API não encontrou esta conta entre as caixas excluídas. Confira se ela foi mesmo excluída, se já não foi restaurada e se a exclusão terminou de processar."
+                :reply.Message)});
             var client=JsonValue.Text(reply.Data,"clientId");
             if(!long.TryParse(client,out _))throw new InvalidOperationException("A API não identificou o cliente da caixa excluída "+account+".");
             var name=JsonValue.Text(reply.Data,"productname");

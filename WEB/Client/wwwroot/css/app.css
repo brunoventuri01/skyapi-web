@@ -80,7 +80,9 @@ main {
     gap: calc(16 * var(--u));
 }
 
-main > * { width: 100%; }
+/* main e uma coluna flex: sem travar o encolhimento, os filhos sao espremidos na vertical
+   quando a pagina passa da altura da tela, em vez de a propria main rolar. */
+main > * { width: 100%; flex-shrink: 0; }
 
 /* ----------------------------------------------------------- sidebar --- */
 .sidebar .logo {
@@ -300,7 +302,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .file-button { display: inline-flex; align-items: center; }
 .file-button input[type=file] { display: none; }
 
-button.execute { margin-top: calc(6 * var(--u)); align-self: flex-start; }
+/* O fieldset e uma coluna flex: sem isto, todo botao solto nele estica de ponta a ponta. */
+fieldset > button { align-self: flex-start; }
+button.execute { margin-top: calc(6 * var(--u)); }
 
 /* ------------------------------------------------------------ painéis -- */
 .panel {
@@ -492,41 +496,46 @@ form { display: flex; flex-direction: column; gap: calc(12 * var(--u)); }
 
 .icon { display: block; }
 
-/* Indicador de etapas: Operação, Dados, Conferência, Resultado. */
+/* Indicador de etapas: Operação, Dados, Conferência, Resultado.
+   Os traços de ligação ocupam a sobra, como as colunas estreladas do Grid do aplicativo. */
 .steps {
     display: flex;
     align-items: center;
-    gap: calc(12 * var(--u));
     margin: 0;
     padding: calc(14 * var(--u)) calc(18 * var(--u));
     list-style: none;
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: calc(12 * var(--u));
+    /* Os dois eixos precisam ser declarados: com so overflow-x, o eixo Y vira "auto"
+       sozinho e a barra passa a rolar para baixo sem ter conteudo para isso. */
     overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .steps li {
     display: flex;
     align-items: center;
     gap: calc(9 * var(--u));
+    min-width: 0;
     font-size: calc(13 * var(--u));
     color: var(--muted);
-    white-space: nowrap;
 }
 
-.steps li + li::before {
+.steps li:not(:last-child) { flex: 1 1 auto; }
+.steps li:last-child { flex: 0 0 auto; }
+
+.steps li:not(:last-child)::after {
     content: "";
-    display: block;
-    width: calc(28 * var(--u));
+    flex: 1 1 auto;
+    min-width: calc(14 * var(--u));
     height: calc(2 * var(--u));
-    margin-right: calc(3 * var(--u));
+    margin: 0 calc(12 * var(--u));
+    border-radius: calc(1 * var(--u));
     background: var(--line-soft);
-    flex: 1 1 calc(28 * var(--u));
 }
 
-/* O traco depois de uma etapa concluida acompanha o azul, como no aplicativo. */
-.steps li.done + li::before { background: var(--accent); }
+.steps li.done:not(:last-child)::after { background: var(--accent); }
 
 .step-badge {
     display: flex;
@@ -549,9 +558,8 @@ form { display: flex; flex-direction: column; gap: calc(12 * var(--u)); }
     color: var(--accent-ink);
 }
 
+.step-name { white-space: nowrap; }
 .steps li.now .step-name { color: var(--ink); font-weight: 600; }
-.steps li:not(:last-child) { flex: 1 1 auto; }
-.steps li:not(:last-child) .step-name { flex: 0 0 auto; }
 
 /* Formato dos registros, logo abaixo do rótulo do campo. */
 .field-note { font-weight: 400; font-size: calc(12 * var(--u)); color: var(--muted); }

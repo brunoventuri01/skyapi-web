@@ -12,7 +12,7 @@ public sealed class WebJob(string kind,string name) {
     public List<MessageRow> Messages {get;}=new();
     public List<string> Log {get;}=new(){"data_hora;conta;resultado;detalhes"};
 }
-public sealed record ConfirmModel(string Title,string Text,string Accept,bool Destructive);
+public sealed record ConfirmModel(string Title,string Text,string Accept,bool Destructive,bool RequireExecutar=false);
 public sealed class WebSession : IDisposable {
     public ApiClient Api {get;}
     public AdvancedService Service {get;}
@@ -44,10 +44,10 @@ public sealed class WebSession : IDisposable {
         if(Running)throw new InvalidOperationException("Aguarde ou interrompa os processos antes de desconectar.");
         Api.ClearToken();Demo=false;await js.InvokeVoidAsync("sky.unlock");Notify();
     }
-    public async Task<bool> Confirm(string title,string text,string accept="Executar",bool destructive=false) {
+    public async Task<bool> Confirm(string title,string text,string accept="Executar",bool destructive=false,bool requireExecutar=false) {
         await dialogGate.WaitAsync();
         try {
-            confirmation=new(TaskCreationOptions.RunContinuationsAsynchronously);Dialog=new(title,text,accept,destructive);Notify();
+            confirmation=new(TaskCreationOptions.RunContinuationsAsynchronously);Dialog=new(title,text,accept,destructive,requireExecutar);Notify();
             return await confirmation.Task;
         }finally{Dialog=null;confirmation=null;dialogGate.Release();Notify();}
     }
@@ -73,10 +73,14 @@ public sealed class WebSession : IDisposable {
         Notify();
     }
     public void End(WebJob job)=>Status(job,job.Stop?"Operação interrompida. Confira os resultados.":job.Attention?"Operação encerrada com registros que exigem conferência.":"Operação concluída com sucesso.");
-    public async Task<bool> Review(WebJob job,string summary,int purchase=0,bool destructive=false) {
+    /// <summary>Conferência antes de enviar. Nos lotes fora da demonstração o aplicativo exige que se
+    /// digite EXECUTAR; os módulos avançados confirmam só no botão, como no Windows.</summary>
+    public async Task<bool> Review(WebJob job,string summary,int purchase=0,bool destructive=false,bool requireExecutar=false) {
         if(job.Stop){job.Attention=true;Status(job,"Conferência interrompida. Nenhuma alteração enviada.");return false;}
         if(purchase>0)summary+="\n\nAutoriza contratar até "+purchase+" licenças adicionais durante a operação, com cobrança na conta Skymail? Nenhuma contratação além desse limite será enviada sem nova confirmação.";
-        bool accepted=await Confirm("Conferência — "+job.Name,summary,purchase>0?"Contratar até "+purchase+" licenças e executar":"Executar",destructive);
+        bool accepted=await Confirm("Conferência — "+job.Name,summary,
+            purchase>0?"Contratar até "+purchase+" licenças e executar":requireExecutar?"Confirmar execução":Demo?"Simular":"Executar",
+            destructive,requireExecutar);
         if(!accepted||job.Stop){job.Attention=true;Status(job,"Operação cancelada antes da execução.");return false;}
         return true;
     }
@@ -95,7 +99,7 @@ public sealed class WebSession : IDisposable {
             items=items.Select(i=>restore.PurchaseAccounts.Contains(i.Target)?i with {Fields=new Dictionary<string,string>(i.Fields){["confirm_purchase"]="true"}}:i).ToArray();
         }
         var summary="Registros: "+items.Length+"\n"+string.Join("\n",plan.Warnings)+extra+"\n\n"+string.Join("\n",items.Select(i=>i.Target+" — "+i.Description));
-        if(!await Review(job,summary,purchase,op is Operation.DeleteAccounts or Operation.DeleteGroups or Operation.DeleteDns))return;
+        if(!await Review(job,summary,purchase,op is Operation.DeleteAccounts or Operation.DeleteGroups or Operation.DeleteDns,!Demo))return;
         job.Total=items.Length;
         await BatchRunner.RunAsync(items,async item=> {
             Status(job,"Processando "+(job.Progress+1)+"/"+job.Total+" · "+item.Target);
